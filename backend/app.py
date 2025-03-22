@@ -1,7 +1,9 @@
 from flask import Flask, jsonify
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, origins=["https://tidal-2025.pages.dev"])
 
 # Enable CORS for all routes
 @app.after_request

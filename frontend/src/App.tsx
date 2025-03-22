@@ -8,7 +8,7 @@ function App() {
   const [welcomeMessage, setWelcomeMessage] = useState('')
 
   useEffect(() => {
-    fetch('/api/welcome')
+    fetch('https://tidal-2025.onrender.com/api/welcome')
       .then(response => response.json())
       .then(data => setWelcomeMessage(data.message))
       .catch(error => console.error('Error fetching welcome message:', error))
