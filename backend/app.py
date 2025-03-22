@@ -15,7 +15,7 @@ def after_request(response):
 
 @app.route('/api/welcome')
 def home():
-    return jsonify(message="Welcome to the Flask API!")
+    return jsonify(message="SUP")
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
