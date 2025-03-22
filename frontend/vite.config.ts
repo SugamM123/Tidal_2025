@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://your-backend-app.onrender.com',
+        target: 'https://tidal-2025.onrender.com',
         changeOrigin: true
       }
     }
