@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://tidal-2025.onrender.com',
+        target: 'https://alphaapi.shlokbhakta.dev',
         changeOrigin: true
       }
     }
