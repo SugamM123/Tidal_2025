@@ -1,15 +1,13 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+import os
 import re
 from manim import *
 import openai
 import dotenv
-import os
-import re
-from flask import request
+from flask_cors import CORS
 import boto3
 import glob
 import shutil
-
 
 dotenv.load_dotenv()
 openai.api_key = os.getenv("OPEN_AI_API")
@@ -27,7 +25,6 @@ s3 = session.client('s3')
 config.media_dir = "./out"
 
 def generate_response(prompt):
-
     response = openai.ChatCompletion.create(
         model="gpt-4o",
         messages=[
@@ -35,11 +32,18 @@ def generate_response(prompt):
             {"role": "user", "content": prompt}
         ]
     )
-
     return (response['choices'][0]['message']['content'])
 
-
 app = Flask(__name__)
+CORS(app, origins=["https://tidal-2025.pages.dev"])
+
+# Enable CORS for all routes
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 @app.route('/run', methods=['GET'])
 def run_code():
@@ -51,16 +55,11 @@ def run_code():
     pattern = r'```(?:python)?\s*(.*?)```'
     match = re.search(pattern, res, re.DOTALL)
     
-
     # Extract code from the response.
     if match:
         code = match.group(1)
     else:
         code = "Error: No code found in the response."
-
-    # Write the entire response to "code.py"
-    # with open("code.py", "w") as f:
-    #     f.write(code)
 
     # Execute the extracted code in the same scope.
     try:
@@ -69,8 +68,6 @@ def run_code():
         global_namespace["MyScene"]().render()
     except Exception as e:
         return jsonify({"error": f"Something broke: {e}"}), 500
-
-    # Return the path of the generated code file.
 
     # Specify the bucket name and the file to upload
     bucket_name = 'alpha-tidal-2025'
@@ -83,7 +80,7 @@ def run_code():
     # Upload the file
     with open(file_path, 'rb') as data:
         s3.upload_fileobj(data, bucket_name, object_name)
-    # Generate a presigned URL for the uploaded file (valid for 1 hour)
+    # Generate a presigned URL for the uploaded file
     url = s3.generate_presigned_url(
         ClientMethod='get_object',
         Params={'Bucket': bucket_name, 'Key': object_name},
@@ -104,5 +101,11 @@ def run_code():
                 print(f'Failed to delete {item_path}. Reason: {e}')
     return jsonify({"video_url": url})
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/api/welcome')
+def home():
+    return jsonify(message="SUP")
+
+if __name__ == '__main__':
+    # Use the PORT environment variable provided by Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

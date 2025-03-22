@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [welcomeMessage, setWelcomeMessage] = useState('')
+
+  useEffect(() => {
+    fetch('https://tidal-2025.onrender.com/api/welcome')
+      .then(response => response.json())
+      .then(data => setWelcomeMessage(data.message))
+      .catch(error => console.error('Error fetching welcome message:', error))
+  }, [])
 
   return (
     <>
@@ -17,6 +25,7 @@ function App() {
         </a>
       </div>
       <h1>Vite + React</h1>
+      {welcomeMessage && <h2>{welcomeMessage}</h2>}
       <div className="card">
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}

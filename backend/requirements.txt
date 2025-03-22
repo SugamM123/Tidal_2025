@@ -3,3 +3,5 @@ flask
 openai==0.28
 dotenv
 boto3
+gunicorn
+flask-cors
