@@ -101,6 +101,41 @@ def run_code():
                 print(f'Failed to delete {item_path}. Reason: {e}')
     return jsonify({"video_url": url})
 
+
+@app.route('/list_videos', methods=['GET'])
+def list_videos():
+    bucket_name = 'alpha-tidal-2025'
+    
+    try:
+        # List all objects in the bucket
+        response = s3.list_objects_v2(Bucket=bucket_name)
+        
+        if 'Contents' not in response:
+            return jsonify({"videos": []})
+        
+        # Extract file names and generate pre-signed URLs for each
+        videos = []
+        for obj in response['Contents']:
+            key = obj['Key']
+            if key.endswith('.mp4'):  # Filter for video files
+                size = obj['Size']
+                last_modified = obj['LastModified'].strftime('%Y-%m-%d %H:%M:%S')
+                url = s3.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={'Bucket': bucket_name, 'Key': key},
+                    ExpiresIn=3600  # URL expires in 1 hour
+                )
+                videos.append({
+                    "key": key,
+                    "size": size,
+                    "last_modified": last_modified,
+                    "url": url
+                })
+                
+        return jsonify({"videos": videos})
+    except Exception as e:
+        return jsonify({"error": f"Failed to list videos: {str(e)}"}), 500
+
 @app.route('/api/welcome')
 def home():
     return jsonify(message="SUP")
