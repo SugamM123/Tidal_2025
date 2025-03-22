@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: 'https://api.render.com/deploy/srv-cvfhj3rqf0us73fr24pg?key=wtMhzb-h-T8' || 'http://127.0.0.1:5000',
         changeOrigin: true
       }
     }
