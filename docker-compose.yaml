@@ -1,0 +1,15 @@
+services:
+  vite-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    # Optional volume for development
+    # volumes:
+    #   - ./:/app
+    environment:
+      - NODE_ENV=production
+      # Add any environment variables your app needs
+      # - VITE_API_URL=https://api.example.com
