@@ -8,13 +8,13 @@ COPY . /app
 RUN apt-get update && apt-get upgrade -y
 
 # install other deps
-RUN apt-get install -y perl
+RUN apt-get install -y texlive-full
 
 # install tinytex
-RUN wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh
 
 # Update and install system dependencies
 RUN apt-get install -y \
+    wget \
     ffmpeg \
     libcairo2-dev \
     pkg-config \
@@ -32,7 +32,7 @@ ENV PATH="/venv/bin:$PATH"
 # Install Python packages
 RUN pip install --no-cache-dir manim flask
 
-CMD sleep infinity
+# CMD sleep infinity
 # CMD ["python", "app.py"]
 
 # Install any needed packages specified in requirements.txt
