@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
   return (
@@ -6,10 +7,37 @@ const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
       {position === 'left' ? (
         <>
           <h2 className="text-white mb-4 font-semibold flex justify-between items-center">
-            Sources
+            Navigation
             <button className="text-gray-400 hover:text-white">
               <i className="fas fa-expand"></i>
             </button>
+          </h2>
+
+          <nav className="mb-6">
+            <ul className="space-y-2">
+              <li>
+                <Link 
+                  to="/" 
+                  className="flex items-center w-full py-2 px-4 rounded-lg hover:bg-gray-700 text-gray-200"
+                >
+                  <span className="mr-3">💬</span>
+                  Chat
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/math" 
+                  className="flex items-center w-full py-2 px-4 rounded-lg hover:bg-gray-700 text-gray-200"
+                >
+                  <span className="mr-3">📊</span>
+                  Math Studio
+                </Link>
+              </li>
+            </ul>
+          </nav>
+
+          <h2 className="text-white mb-4 font-semibold flex justify-between items-center">
+            Sources
           </h2>
           <button className="w-full py-2 px-4 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 mb-4">
             + Add source
@@ -27,27 +55,6 @@ const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
         </>
       ) : (
         <>
-          <h2 className="text-white mb-4 font-semibold">Studio</h2>
-          <div className="bg-gray-800 rounded-lg p-4 mb-4">
-            <h3 className="text-white mb-2">Audio Overview</h3>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
-                <i className="fas fa-microphone text-gray-400"></i>
-              </div>
-              <div>
-                <p className="text-white text-sm">Deep Dive conversation</p>
-                <p className="text-gray-400 text-xs">Two hosts (English only)</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="flex-1 py-2 px-4 rounded-lg bg-gray-700 text-white hover:bg-gray-600">
-                Customize
-              </button>
-              <button className="flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-                Generate
-              </button>
-            </div>
-          </div>
           <div className="text-white">
             <div className="flex justify-between items-center mb-4">
               <h3>Notes</h3>
@@ -65,4 +72,4 @@ const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

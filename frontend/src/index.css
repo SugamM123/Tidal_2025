@@ -163,3 +163,70 @@ button:focus {
   border-radius: 0.25rem;
   margin: 0.5rem 0;
 }
+
+/* Desmos Calculator Styling */
+.desmos-container {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  background-color: #f8f8f8;
+  margin: 1rem 0;
+}
+
+.desmos-container .dcg-graphpaper {
+  background-color: #f8f8f8 !important;
+}
+
+/* Improve contrast for graphs in dark mode */
+.desmos-container .dcg-graph-inner {
+  background-color: #222 !important;
+}
+
+.desmos-container .dcg-axis-label {
+  color: #ddd !important;
+}
+
+.desmos-container .dcg-label {
+  color: #ddd !important;
+  font-weight: bold !important;
+}
+
+/* Better styling for graph points */
+.desmos-container .dcg-mq-math-mode {
+  font-size: 1.1em !important;
+}
+
+/* Override default font size in the calculator */
+.dcg-calculator-api-container {
+  font-size: 14px !important;
+}
+
+/* Improve math expression presentation */
+.math-expr {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background-color: rgba(30, 30, 30, 0.5);
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+}
+
+/* Animation for when the calculator loads */
+@keyframes desmos-fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.desmos-container {
+  animation: desmos-fade-in 0.5s ease-out;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

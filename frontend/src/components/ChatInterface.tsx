@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from '../services/geminiService';
 import { useAuth0 } from '@auth0/auth0-react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './MarkdownRenderer';
+import DesmosModal from './DesmosModal';
+import { detectMathExpression, shouldShowGraph } from '../utils/mathParser';
+import { processCommand } from '../utils/commandProcessor';
 
 interface Message {
   id: number;
   text: string;
   isUser: boolean;
+  graphExpression?: string;
 }
 
 const ChatInterface: React.FC = () => {
@@ -14,6 +18,8 @@ const ChatInterface: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [desmosModalOpen, setDesmosModalOpen] = useState(false);
+  const [currentExpression, setCurrentExpression] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
 
@@ -26,7 +32,7 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     const initialGreeting = {
       id: 0,
-      text: "Hi! I'm Alpha Assistant. How can I help you today?",
+      text: "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra.",
       isUser: false,
     };
     
@@ -39,6 +45,45 @@ const ChatInterface: React.FC = () => {
     
     if (!input.trim()) return;
 
+    // Process commands
+    const commandResult = processCommand(input);
+    if (commandResult.isCommand) {
+      const userMessage: Message = { 
+        id: messages.length, 
+        text: input, 
+        isUser: true 
+      };
+      
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+      
+      // Handle different command actions
+      if (commandResult.action === 'clear') {
+        handleNewConversation();
+        return;
+      }
+      
+      if (commandResult.action === 'desmos' && commandResult.data?.expression) {
+        setCurrentExpression(commandResult.data.expression);
+        setDesmosModalOpen(true);
+      }
+      
+      // Add assistant response for the command
+      if (commandResult.message) {
+        setMessages((prev) => [
+          ...prev,
+          { 
+            id: prev.length, 
+            text: commandResult.message || '',
+            isUser: false,
+            graphExpression: commandResult.action === 'desmos' ? commandResult.data?.expression : undefined
+          },
+        ]);
+      }
+      
+      return;
+    }
+
     // If user is not authenticated, prompt login
     if (!isAuthenticated) {
       const shouldLogin = window.confirm('Please log in to use the chat. Would you like to log in now?');
@@ -48,7 +93,19 @@ const ChatInterface: React.FC = () => {
       return;
     }
 
-    const userMessage = { id: messages.length, text: input, isUser: true };
+    // Check if the input contains a graph request
+    const mathExpression = detectMathExpression(input);
+    const userMessage: Message = { 
+      id: messages.length, 
+      text: input, 
+      isUser: true 
+    };
+    
+    // If there's a direct graphing request, add the graph expression to the message
+    if (mathExpression.hasEquation && shouldShowGraph(input)) {
+      userMessage.graphExpression = mathExpression.latex;
+    }
+    
     setMessages((prev) => [...prev, userMessage]);
     const userInput = input; // Store input before clearing
     setInput('');
@@ -56,6 +113,15 @@ const ChatInterface: React.FC = () => {
 
     try {
       // Simple message for testing
+      if (userInput.toLowerCase() === 'test') {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Fake delay
+        setMessages((prev) => [
+          ...prev,
+          { id: prev.length, text: "Test successful! The chat interface is working properly.\n\n**Bold text** and *italic text* should be formatted correctly.", isUser: false },
+        ]);
+        setIsLoading(false);
+        return;
+      }
 
       // Send message to Gemini API with timeout handling
       const timeoutPromise = new Promise((_, reject) => {
@@ -69,10 +135,19 @@ const ChatInterface: React.FC = () => {
       const response = await Promise.race([responsePromise, timeoutPromise]) as string;
       console.log("Received response from Gemini API:", response);
       
+      // Check if the response contains any mathematical expressions that should be graphed
+      const responseHasGraph = shouldShowGraph(response);
+      const responseMathExpression = responseHasGraph ? detectMathExpression(response) : { hasEquation: false, latex: '', type: 'unknown' };
+      
       // Add AI response to messages
       setMessages((prev) => [
         ...prev,
-        { id: prev.length, text: response || "I received your message but couldn't generate a response. Please try again.", isUser: false },
+        { 
+          id: prev.length, 
+          text: response || "I received your message but couldn't generate a response. Please try again.", 
+          isUser: false,
+          graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined
+        },
       ]);
     } catch (error) {
       console.error('Error getting response:', error);
@@ -117,14 +192,19 @@ const ChatInterface: React.FC = () => {
       {
         id: 0,
         text: success 
-          ? "Hi! I'm Alpha Assistant. How can I help you today?" 
-          : "Hi! I'm Alpha Assistant. Note: There was an issue resetting the conversation history.",
+          ? "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra."
+          : "Welcome to Alpha Assistant. Note: There was an issue resetting the conversation history.",
         isUser: false,
       },
     ]);
     
     // Clear debug info
     setDebugInfo(null);
+  };
+
+  const openDesmosWithExpression = (expression: string) => {
+    setCurrentExpression(expression);
+    setDesmosModalOpen(true);
   };
 
   return (
@@ -170,30 +250,19 @@ const ChatInterface: React.FC = () => {
               {message.isUser ? (
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
-                <div className="markdown-content">
-                  <ReactMarkdown 
-                    components={{
-                      h1: ({children}) => <h1 className="text-xl font-bold my-3">{children}</h1>,
-                      h2: ({children}) => <h2 className="text-lg font-bold my-2">{children}</h2>,
-                      h3: ({children}) => <h3 className="text-md font-bold my-2">{children}</h3>,
-                      ul: ({children}) => <ul className="list-disc ml-6 my-2">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal ml-6 my-2">{children}</ol>,
-                      li: ({children}) => <li className="my-1">{children}</li>,
-                      code: ({className, children, node}: any) => {
-                        const isInline = !node?.position?.start?.line;
-                        return isInline ? 
-                          <code className="bg-gray-800 px-1 rounded text-pink-300">{children}</code> : 
-                          <code className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto text-pink-300">{children}</code>;
-                      },
-                      a: ({href, children}) => <a href={href} className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">{children}</a>,
-                      blockquote: ({children}) => <blockquote className="border-l-4 border-gray-500 pl-4 py-1 my-2 italic">{children}</blockquote>,
-                      em: ({children}) => <em className="italic">{children}</em>,
-                      strong: ({children}) => <strong className="font-bold">{children}</strong>,
-                      p: ({children}) => <p className="mb-3">{children}</p>
-                    }}
+                <MarkdownRenderer content={message.text} />
+              )}
+              
+              {/* Render the math expression button if there's a graph expression */}
+              {message.graphExpression && (
+                <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
+                  <span className="text-xs text-gray-300">Mathematical expression detected</span>
+                  <button 
+                    onClick={() => openDesmosWithExpression(message.graphExpression!)} 
+                    className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
                   >
-                    {message.text}
-                  </ReactMarkdown>
+                    Open in Desmos Studio
+                  </button>
                 </div>
               )}
             </div>
@@ -210,33 +279,45 @@ const ChatInterface: React.FC = () => {
             </div>
           </div>
         )}
-        {debugInfo && (
-          <div className="mt-4 p-3 bg-gray-800 text-red-300 rounded-lg text-xs overflow-x-auto">
-            <pre>{debugInfo}</pre>
-          </div>
-        )}
-        <div ref={messagesEndRef}></div>
+        <div ref={messagesEndRef} />
       </div>
       
+      {/* Debug info panel, conditionally rendered */}
+      {debugInfo && (
+        <div className="p-2 bg-gray-800 border-t border-gray-700 max-h-40 overflow-y-auto">
+          <h3 className="text-sm font-bold text-yellow-400 mb-1">Debug Information:</h3>
+          <pre className="text-xs text-gray-300 whitespace-pre-wrap">{debugInfo}</pre>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 bg-[#2a2a2a] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask Alpha anything you'd like to know or learn about!"
+            placeholder="Ask a question or mention mathematical concepts for visualization..."
             disabled={isLoading}
           />
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!input.trim() || isLoading}
+            className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || !input.trim()}
           >
-            <i className="fas fa-paper-plane"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
           </button>
         </div>
       </form>
+      
+      {/* Desmos Modal */}
+      <DesmosModal
+        isOpen={desmosModalOpen}
+        onClose={() => setDesmosModalOpen(false)}
+        expression={currentExpression}
+      />
     </div>
   );
 };
