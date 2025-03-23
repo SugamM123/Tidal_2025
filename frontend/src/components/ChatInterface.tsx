@@ -8,7 +8,7 @@ import { processCommand } from '../utils/commandProcessor';
 import { extractFrontmatter } from '../utils/frontmatterParser';
 import { ParsedFrontmatter } from '../utils/toolParsers';
 import MediaViewer from './MediaViewer';
-import MediaGallery from './MediaGallery';
+import MediaGallery, { MediaItem } from './MediaGallery';
 import DrawingBoard from './DrawingBoard';
 // Temporary type until @excalidraw/excalidraw is installed
 type ExcalidrawElement = any;
@@ -57,7 +57,7 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     const initialGreeting: Message = {
       id: 0,
-      text: "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra.",
+      text: "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can help with STEM topics, generate visualizations, and assist with mathematical concepts.",
       sender: 'bot' as const,
     };
     
@@ -71,47 +71,6 @@ const ChatInterface: React.FC = () => {
     const userMessage = input;
     setInput('');
     setIsLoading(true);
-    
-    // Process commands
-    const commandResult = processCommand(userMessage);
-    if (commandResult.isCommand) {
-      // Add user message to chat
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          text: userMessage,
-          sender: 'user',
-        },
-      ]);
-      
-      // Handle different command actions
-      if (commandResult.action === 'clear') {
-        handleNewConversation();
-        return;
-      }
-      
-      if (commandResult.action === 'desmos' && commandResult.data?.expression) {
-        setCurrentExpression(commandResult.data.expression);
-        setDesmosModalOpen(true);
-      }
-      
-      // Add assistant response for the command
-      if (commandResult.message) {
-        setMessages((prev) => [
-          ...prev,
-          { 
-            id: prev.length, 
-            text: commandResult.message || '',
-            sender: 'bot',
-            graphExpression: commandResult.action === 'desmos' ? commandResult.data?.expression : undefined
-          },
-        ]);
-      }
-      
-      setIsLoading(false);
-      return;
-    }
     
     // Add user message to chat
     setMessages(prev => [
@@ -134,7 +93,6 @@ const ChatInterface: React.FC = () => {
     }
 
     try {
-      // Check if the user is asking for a drawing or Mermaid diagram
       const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
       const mermaidKeywords = ['mermaid', 'flowchart', 'sequence diagram', 'gantt chart', 'erdiagram', 'class diagram'];
       
@@ -153,7 +111,7 @@ const ChatInterface: React.FC = () => {
       }
 
       if (isDrawingRequest || isMermaidRequest) {
-        // Let the user know we're generating a diagram
+        // Handle drawing request
         setMessages(prev => [
           ...prev,
           {
@@ -163,19 +121,13 @@ const ChatInterface: React.FC = () => {
           },
         ]);
         
-        // Generate the diagram
         const diagramElements = await excalidrawService.generateDiagram(userMessage);
-        
-        // Update the state to hold the generated elements
         setExcalidrawElements(diagramElements);
         setDrawingPrompt(userMessage);
-        
-        // Show the drawing board
         setShowDrawingBoard(true);
         
-        // Add a message about the diagram
         setMessages(prev => [
-          ...prev.slice(0, -1), // Remove the "Generating..." message
+          ...prev.slice(0, -1),
           {
             id: Date.now() + 1,
             text: isMermaidRequest 
@@ -187,19 +139,16 @@ const ChatInterface: React.FC = () => {
       } else if (userMessage.toLowerCase().includes('list videos')) {
         // Handle video listing
         const response = await fetch(`${API_BASE_URL}/list_videos`);
-        
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
         }
         
         const data = await response.json();
-        
         if (data.error) {
           throw new Error(data.error);
         }
         
         setVideoList(data.videos || []);
-        
         setMessages(prev => [
           ...prev,
           {
@@ -212,19 +161,16 @@ const ChatInterface: React.FC = () => {
       } else if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create video')) {
         // Handle video generation
         const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(userMessage)}`);
-        
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
         }
         
         const data = await response.json();
-        
         if (data.error) {
           throw new Error(data.error);
         }
         
         setVideoUrl(data.video_url);
-        
         setMessages(prev => [
           ...prev,
           {
@@ -242,31 +188,37 @@ const ChatInterface: React.FC = () => {
         
         console.log("Sending message to Gemini API:", userMessage);
         const responsePromise = geminiService.sendMessage(userMessage);
-        
         const response = await Promise.race([responsePromise, timeoutPromise]) as string;
         console.log("Received response from Gemini API:", response);
         
         // Process frontmatter if present
         const { frontmatter, content } = extractFrontmatter(response);
-        
-        // Check if the processed content contains any mathematical expressions
-        const responseHasGraph = shouldShowGraph(content);
-        const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
-        
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            text: content || "I received your message but couldn't generate a response. Please try again.",
-            sender: 'bot',
-            graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
-            frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
-          },
-        ]);
 
-        // Process any tool commands from frontmatter
+        // Handle special commands from frontmatter first
+        if (frontmatter.video) {
+          // Handle video generation
+          const videoResponse = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(frontmatter.video.description)}`);
+          if (!videoResponse.ok) {
+            throw new Error(`Server responded with status: ${videoResponse.status}`);
+          }
+          const videoData = await videoResponse.json();
+          if (videoData.error) {
+            throw new Error(videoData.error);
+          }
+          setVideoUrl(videoData.video_url);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              text: "Here's a visualization based on the request:",
+              sender: 'bot',
+              video: videoData.video_url
+            },
+          ]);
+        }
+
         if (frontmatter.graph) {
-          // Combine all graph elements into a single expression string
+          // Convert graph elements to Desmos format
           const graphExpression = frontmatter.graph.elements
             .map(element => {
               if (element.type === 'line') {
@@ -280,6 +232,34 @@ const ChatInterface: React.FC = () => {
           setCurrentExpression(graphExpression);
           setDesmosModalOpen(true);
         }
+
+        if (frontmatter.diagram?.mermaidCode) {
+          // Add mermaid diagram to messages
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              text: `\`\`\`mermaid\n${frontmatter.diagram!.mermaidCode}\n\`\`\``,
+              sender: 'bot'
+            },
+          ]);
+        }
+
+        // Check for mathematical expressions in content
+        const responseHasGraph = shouldShowGraph(content);
+        const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
+        
+        // Add the main content message
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: content || "I received your message but couldn't generate a response. Please try again.",
+            sender: 'bot',
+            graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
+            frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
+          },
+        ]);
       }
     } catch (error) {
       console.error('Error getting response:', error);
@@ -319,7 +299,7 @@ const ChatInterface: React.FC = () => {
       {
         id: 0,
         text: success 
-          ? "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra."
+          ? "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can help with STEM topics, generate visualizations, and assist with mathematical concepts."
           : "Welcome to Alpha Assistant. Note: There was an issue resetting the conversation history.",
         sender: 'bot',
       },
@@ -328,6 +308,8 @@ const ChatInterface: React.FC = () => {
     setDebugInfo(null);
     setVideoUrl(null);
     setVideoList([]);
+    setDesmosModalOpen(false);
+    setCurrentExpression('');
   };
 
   const handleToggleDrawingBoard = () => {
@@ -341,6 +323,7 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold">Chat</h2>
@@ -349,7 +332,6 @@ const ChatInterface: React.FC = () => {
           <button
             onClick={async () => {
               setInput('list videos');
-              // Create a synthetic event with the required properties
               handleSubmit({
                 preventDefault: () => {},
                 type: 'submit'
@@ -387,6 +369,7 @@ const ChatInterface: React.FC = () => {
         </div>
       </div>
       
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map(message => (
           <div
@@ -405,58 +388,63 @@ const ChatInterface: React.FC = () => {
               {message.sender === 'user' ? (
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
-                <MarkdownRenderer content={message.text} />
-              )}
-              
-              {/* Render the math expression button if there's a graph expression */}
-              {message.graphExpression && (
-                <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
-                  <span className="text-xs text-gray-300">Mathematical expression detected</span>
-                  <button 
-                    onClick={() => openDesmosWithExpression(message.graphExpression!)} 
-                    className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-                  >
-                    Open in Desmos Studio
-                  </button>
-                </div>
-              )}
-              
-              {message.video && (
-                <div className="mt-3">
-                  <MediaViewer
-                    type="video"
-                    src={message.video}
-                    interactive={true}
-                    width="100%"
-                  />
-                </div>
-              )}
-              
-              {message.videoList && message.videoList.length > 0 && (
-                <div className="mt-3">
-                  <MediaGallery
-                    items={message.videoList.map(video => ({
-                      id: video.key,
-                      type: 'video',
-                      src: video.url,
-                      title: video.key,
-                      size: video.size,
-                      lastModified: video.last_modified
-                    }))}
-                    layout="list"
-                  />
-                </div>
-              )}
-              
-              {message.videoList && message.videoList.length === 0 && (
-                <div className="mt-3 text-sm text-gray-300">
-                  No videos found in storage.
+                <div>
+                  <MarkdownRenderer content={message.text} />
+                  
+                  {/* Graph expression */}
+                  {message.graphExpression && (
+                    <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
+                      <span className="text-xs text-gray-300">Mathematical expression detected</span>
+                      <button 
+                        onClick={() => openDesmosWithExpression(message.graphExpression!)} 
+                        className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Open in Desmos Studio
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Video */}
+                  {message.video && (
+                    <div className="mt-3">
+                      <MediaViewer
+                        type="video"
+                        src={message.video}
+                        interactive={true}
+                        width="100%"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Video list */}
+                  {message.videoList && message.videoList.length > 0 && (
+                    <div className="mt-3">
+                      <MediaGallery
+                        items={message.videoList.map(video => ({
+                          id: video.key,
+                          type: 'video',
+                          src: video.url,
+                          title: video.key,
+                          size: video.size,
+                          lastModified: video.last_modified
+                        }))}
+                        layout="list"
+                      />
+                    </div>
+                  )}
+                  
+                  {message.videoList && message.videoList.length === 0 && (
+                    <div className="mt-3 text-sm text-gray-300">
+                      No videos found in storage.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         ))}
         
+        {/* Loading indicator */}
         {isLoading && (
           <div className="flex justify-center">
             <div className="bg-gray-700 text-white rounded-lg p-3">
@@ -477,6 +465,7 @@ const ChatInterface: React.FC = () => {
           </div>
         )}
         
+        {/* Debug info */}
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-800 text-red-300 rounded-lg text-xs overflow-x-auto">
             <pre>{debugInfo}</pre>
@@ -485,6 +474,7 @@ const ChatInterface: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
       
+      {/* Input form */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
         <div className="flex items-center space-x-2">
           <input
@@ -521,14 +511,13 @@ const ChatInterface: React.FC = () => {
         </div>
       </form>
       
-      {/* Desmos Modal */}
+      {/* Modals */}
       <DesmosModal
         isOpen={desmosModalOpen}
         onClose={() => setDesmosModalOpen(false)}
         expression={currentExpression}
       />
       
-      {/* Drawing board modal */}
       {showDrawingBoard && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
