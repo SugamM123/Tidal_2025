@@ -18,9 +18,7 @@ interface Video {
   url: string;
 }
 
-const API_BASE_URL = import.meta.env.PROD
-  ? 'https://alphaapi.shlokbhakta.dev' // Production API URL
-  : '/api'; // Development (uses Vite proxy)
+const API_BASE_URL = 'https://alphaapi.shlokbhakta.dev';
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
