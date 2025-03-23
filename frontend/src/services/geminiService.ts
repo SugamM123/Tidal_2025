@@ -11,6 +11,7 @@ export class GeminiService {
   private model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   private chat: ChatSession | null = null;
   private useDirectMode = false;
+  private history: { role: string; parts: { text: string }[] }[] = [];
 
   constructor() {
     // Initialize with a new chat session
@@ -36,8 +37,22 @@ export class GeminiService {
       if (!this.chat) {
         throw new Error('Chat session not initialized');
       }
+
+      // Keep track of the message in our history
+      this.history.push({
+        role: "user",
+        parts: [{ text: message }]
+      });
+
       const result = await this.chat.sendMessage(message);
       const response = result.response.text();
+
+      // Keep track of the response in our history
+      this.history.push({
+        role: "model",
+        parts: [{ text: response }]
+      });
+
       return response;
     } catch (error) {
       console.error('Error communicating with Gemini API:', error);
@@ -78,11 +93,58 @@ export class GeminiService {
     }
   }
 
+  // Append content to history without expecting a response
+  async appendToHistory(content: string) {
+    if (!apiKey) {
+      throw new Error('Gemini API key not configured');
+    }
+
+    try {
+      // Add to our internal history
+      this.history.push({
+        role: "user",
+        parts: [{ text: content }]
+      });
+
+      if (this.useDirectMode) {
+        console.log("In direct mode, can't actually append to history");
+        return;
+      }
+
+      if (!this.chat) {
+        throw new Error('Chat session not initialized');
+      }
+
+      // In chat session mode, we can send the message but we don't care about the response
+      await this.chat.sendMessage(content);
+      
+      // No need to track the response as we don't display it to the user
+      console.log("Content added to chat history");
+      return;
+    } catch (error) {
+      console.error('Error appending to history:', error);
+      this.useDirectMode = true; // Switch to direct mode for future interactions
+      throw error;
+    }
+  }
+
   // Start a new conversation
   resetConversation() {
     try {
       // Reset direct mode flag
       this.useDirectMode = false;
+      
+      // Reset history
+      this.history = [
+        {
+          role: "user",
+          parts: [{ text: "Hello, please introduce yourself as Alpha Assistant." }],
+        },
+        {
+          role: "model",
+          parts: [{ text: "Hello! I'm Alpha Assistant, a helpful AI assistant designed to provide information, answer questions, and assist you with various tasks. How can I help you today?" }],
+        },
+      ];
       
       // Set up safety settings
       const safetySettings = [
@@ -113,16 +175,7 @@ export class GeminiService {
           maxOutputTokens: 1000,
         },
         safetySettings,
-        history: [
-          {
-            role: "user",
-            parts: [{ text: "Hello, please introduce yourself as Alpha Assistant." }],
-          },
-          {
-            role: "model",
-            parts: [{ text: "Hello! I'm Alpha Assistant, a helpful AI assistant designed to provide information, answer questions, and assist you with various tasks. How can I help you today?" }],
-          },
-        ],
+        history: this.history,
       });
       
       return true;
