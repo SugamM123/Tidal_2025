@@ -5,12 +5,15 @@ import MarkdownRenderer from './MarkdownRenderer';
 import DesmosModal from './DesmosModal';
 import { detectMathExpression, shouldShowGraph } from '../utils/mathParser';
 import { processCommand } from '../utils/commandProcessor';
+import { extractFrontmatter } from '../utils/frontmatterParser';
+import { ParsedFrontmatter, GraphCommand, GraphLine } from '../utils/toolParsers';
 
 interface Message {
   id: number;
   text: string;
   isUser: boolean;
   graphExpression?: string;
+  frontmatter?: ParsedFrontmatter;
 }
 
 const ChatInterface: React.FC = () => {
@@ -135,20 +138,41 @@ const ChatInterface: React.FC = () => {
       const response = await Promise.race([responsePromise, timeoutPromise]) as string;
       console.log("Received response from Gemini API:", response);
       
-      // Check if the response contains any mathematical expressions that should be graphed
-      const responseHasGraph = shouldShowGraph(response);
-      const responseMathExpression = responseHasGraph ? detectMathExpression(response) : { hasEquation: false, latex: '', type: 'unknown' };
+      // Process frontmatter if present
+      const { frontmatter, content } = extractFrontmatter(response);
       
-      // Add AI response to messages
+      // Check if the processed content contains any mathematical expressions that should be graphed
+      const responseHasGraph = shouldShowGraph(content);
+      const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
+      
+      // Add AI response to messages with both content and frontmatter
       setMessages((prev) => [
         ...prev,
-        { 
-          id: prev.length, 
-          text: response || "I received your message but couldn't generate a response. Please try again.", 
+        {
+          id: prev.length,
+          text: content || "I received your message but couldn't generate a response. Please try again.",
           isUser: false,
-          graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined
+          graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
+          frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
         },
       ]);
+
+      // Process any tool commands from frontmatter
+      if (frontmatter.graph) {
+        // Combine all graph elements into a single expression string
+        const graphExpression = frontmatter.graph.elements
+          .map(element => {
+            if (element.type === 'line') {
+              return `${element.id},${element.equation},${element.color}`;
+            } else {
+              return `${element.id},${element.min},${element.max},${element.step}`;
+            }
+          })
+          .join('|');
+        
+        setCurrentExpression(graphExpression);
+        setDesmosModalOpen(true);
+      }
     } catch (error) {
       console.error('Error getting response:', error);
       let errorMessage = 'Sorry, I encountered an error processing your request.';
