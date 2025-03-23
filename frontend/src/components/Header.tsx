@@ -11,7 +11,7 @@ const Header: React.FC = () => {
         <div className="bg-gradient-to-r from-purple-500 to-blue-500 w-8 h-8 rounded-md flex items-center justify-center font-bold text-xl">
           A
         </div>
-        <span className="text-xl font-semibold">Alpha Assistant</span>
+        <span className="text-xl font-semibold">Alpha</span>
       </div>
       <div className="flex items-center gap-4">
         <button className="p-2 hover:bg-[#2a2a2a] rounded-lg">

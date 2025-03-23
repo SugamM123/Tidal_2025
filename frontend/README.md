@@ -1,3 +1,68 @@
+# Alpha Assistant
+
+A modern AI assistant application built with React, featuring Auth0 authentication and Google's Gemini API integration.
+
+## Features
+
+- User authentication via Auth0
+- AI-powered chat with Google's Gemini model
+- Modern UI with Tailwind CSS
+- Real-time message display
+- Persistent conversation history
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- NPM or Yarn
+- Auth0 account
+- Google Gemini API key
+
+### Setup
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+3. Create a `.env` file in the `frontend` directory with the following variables:
+
+```
+# Auth0 Configuration
+VITE_AUTH0_DOMAIN=your-domain.auth0.com
+VITE_AUTH0_CLIENT_ID=your-client-id
+
+# Gemini API Configuration
+VITE_GEMINI_API_KEY=your-gemini-api-key
+```
+
+4. Start the development server:
+
+```bash
+npm run dev
+```
+
+## Troubleshooting
+
+If you're experiencing issues with the Gemini API integration:
+
+1. Type "check api key" in the chat to verify if your API key is working
+2. Type "test" to check if the chat interface is functioning properly
+3. Look for the "API Connected" or "API Key Invalid" indicator in the chat header
+4. Check the debug logs when errors occur for more detailed information
+
+## Auth0 Setup
+
+See the `AUTH0_SETUP.md` file for detailed instructions on configuring Auth0.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
