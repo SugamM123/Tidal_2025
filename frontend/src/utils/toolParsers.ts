@@ -61,57 +61,56 @@ export const parseGraphCommand = (command: string): GraphCommand => {
 
       // Special handling for circle1
       if (id === 'circle1') {
-        return {
-          id,
+        return [{
+          id: 'circle1',
           latex: '(x-0)^{2}+(y-0)^{2}=r^2',
           color: '#ff0000'
-        };
+        }];
       }
 
-      // Special handling for r (both equation and slider)
+      // Special handling for r - return both line and slider
       if (id === 'r') {
-        // If all parts after id are undefined or empty, create the equation
-        if (!parts[1] || parts[1] === 'undefined') {
-          return {
-            id,
+        return [
+          {
+            id: 'r_eq',
             latex: 'r=1',
             color: '#00ff00'
-          };
-        }
-        // Otherwise create the slider
-        return {
-          id,
-          sliderBounds: {
-            min: 0,
-            max: 5,
-            step: 0.1
+          },
+          {
+            id: 'r_slider',
+            sliderBounds: {
+              min: 0,
+              max: 5,
+              step: 0.1
+            }
           }
-        };
+        ];
       }
 
       // Regular expression or slider handling
       if (parts.length === 4 && parts.slice(1).some(p => p && p !== 'undefined')) {
         // Slider with at least one non-undefined value
-        return {
+        return [{
           id,
           sliderBounds: {
             min: parseFloat(parts[1]) || 0,
             max: parseFloat(parts[2]) || 5,
             step: parseFloat(parts[3]) || 0.1
           }
-        };
+        }];
       } else if (parts.length >= 2) {
         // Expression with optional color
-        return {
+        return [{
           id,
           latex: parts[1] && parts[1] !== 'undefined' ? parts[1] : '',
           ...(parts[2] && parts[2] !== 'undefined' && { color: parts[2] })
-        };
+        }];
       }
 
       return null;
     })
-    .filter(Boolean) as (GraphLine | GraphSlider)[];
+    .filter(Boolean)
+    .flat() as (GraphLine | GraphSlider)[];
 
   return {
     type: 'graph',

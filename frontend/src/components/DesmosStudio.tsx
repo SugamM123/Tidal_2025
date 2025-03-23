@@ -88,17 +88,16 @@ const DesmosStudio: React.FC<DesmosStudioProps> = ({
                 return element;
               }
               
-              if (id === 'r') {
-                // First r is for the equation r=1
-                if (!param1 || param1 === 'undefined') {
-                  const element: DesmosExpression = {
-                    id,
-                    latex: 'r=1',
-                    color: '#00ff00'
-                  };
-                  return element;
-                }
-                // Second r is for slider bounds
+              if (id === 'r_eq') {
+                const element: DesmosExpression = {
+                  id,
+                  latex: 'r=1',
+                  color: '#00ff00'
+                };
+                return element;
+              }
+              
+              if (id === 'r_slider') {
                 const element: DesmosSlider = {
                   id,
                   sliderBounds: {
@@ -140,26 +139,22 @@ const DesmosStudio: React.FC<DesmosStudioProps> = ({
                 };
                 calculator.setExpression(expr);
               }
-              else if (element.id === 'r') {
-                if (!('sliderBounds' in element)) {
-                  // First r instance is for the equation
-                  const expr: DesmosExpression = {
-                    id: element.id,
-                    latex: isExpression(element) ? element.latex : 'r=1',
-                    color: isExpression(element) ? element.color || '#00ff00' : '#00ff00'
-                  };
-                  calculator.setExpression(expr);
-                } else {
-                  // Second r instance is for the slider
-                  calculator.setExpression({
-                    id: element.id,
-                    sliderBounds: {
-                      min: 0,
-                      max: 5,
-                      step: 0.1
-                    }
-                  });
-                }
+              else if (element.id === 'r_eq' && isExpression(element)) {
+                calculator.setExpression({
+                  id: element.id,
+                  latex: element.latex || 'r=1',
+                  color: element.color || '#00ff00'
+                });
+              }
+              else if (element.id === 'r_slider' && !isExpression(element)) {
+                calculator.setExpression({
+                  id: element.id,
+                  sliderBounds: element.sliderBounds || {
+                    min: 0,
+                    max: 5,
+                    step: 0.1
+                  }
+                });
               }
               else if (isExpression(element)) {
                 calculator.setExpression(element);

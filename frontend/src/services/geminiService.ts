@@ -242,6 +242,8 @@ Of course, you can also combine sliders with graphs just first set the value the
 ||line1,y=mx,#ff0000|m,m=3,#00ff00|m,min,max,step||
 
 All fields have to be filled to fully optimize the graph.
+DO NOT USE MULTILETTER VARIABLES. please only use single letter variables. because words like sigma are going to be treated as s * i * g * m * a
+
 </GraphTool>
 
 <DiagramTool>
