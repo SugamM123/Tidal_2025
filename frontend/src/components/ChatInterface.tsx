@@ -41,7 +41,7 @@ const ChatInterface: React.FC = () => {
         // Check if user wants to list videos
         if (input.toLowerCase().includes('list videos')) {
           // Make sure the URL matches exactly what your backend expects
-          const response = await fetch('/api/list_videos');
+          const response = await fetch('/list_videos');
           
           // Check if response is OK before trying to parse JSON
           if (!response.ok) {
@@ -67,7 +67,7 @@ const ChatInterface: React.FC = () => {
           setMessages(prev => [...prev, botResponse]);
         } else {
           // Regular video generation flow
-          const response = await fetch(`/api/run?prompt=${encodeURIComponent(input)}`);
+          const response = await fetch(`/run?prompt=${encodeURIComponent(input)}`);
           
           // Check if response is OK before trying to parse JSON
           if (!response.ok) {

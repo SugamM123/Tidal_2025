@@ -10,7 +10,7 @@ export default defineConfig({
         target: 'https://alphaapi.shlokbhakta.dev',
         // target: 'http://127.0.0.1:5001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        // rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }
