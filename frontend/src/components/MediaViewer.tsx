@@ -151,8 +151,8 @@ const MediaViewer: React.FC<MediaViewerProps> = ({
       {renderMedia()}
       
       {/* Overlay controls that appear on hover */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg">
-        <div className="flex space-x-2">
+      <div className="absolute inset-0 flex items-start justify-end opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg">
+        <div className="flex space-x-2 p-3">
           {type === 'video' && interactive && (
             <button 
               onClick={handleMediaClick}

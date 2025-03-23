@@ -79,11 +79,13 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
               >
                 <div className="flex items-center">
                   <div className="w-16 h-16 bg-gray-700 rounded flex items-center justify-center mr-4 overflow-hidden">
-                    {item.type === 'video' && <i className="fas fa-video text-2xl text-gray-400"></i>}
-                    {item.type === 'image' && <i className="fas fa-image text-2xl text-gray-400"></i>}
-                    {item.type === 'desmos' && <i className="fas fa-chart-line text-2xl text-gray-400"></i>}
-                    {item.type === 'pdf' && <i className="fas fa-file-pdf text-2xl text-gray-400"></i>}
-                    {item.type === 'excalidraw' && <i className="fas fa-draw-polygon text-2xl text-gray-400"></i>}
+                    <div className="flex items-start justify-end w-full h-full p-3">
+                      {item.type === 'video' && <i className="fas fa-video text-2xl text-gray-400"></i>}
+                      {item.type === 'image' && <i className="fas fa-image text-2xl text-gray-400"></i>}
+                      {item.type === 'desmos' && <i className="fas fa-chart-line text-2xl text-gray-400"></i>}
+                      {item.type === 'pdf' && <i className="fas fa-file-pdf text-2xl text-gray-400"></i>}
+                      {item.type === 'excalidraw' && <i className="fas fa-draw-polygon text-2xl text-gray-400"></i>}
+                    </div>
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-medium truncate">{item.title || 'Untitled'}</div>
