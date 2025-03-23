@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 
 interface DesmosGraphProps {
-  expression: string;
+  expression: any;
   height?: string;
   width?: string;
 }
@@ -35,7 +35,7 @@ const DesmosGraph: React.FC<DesmosGraphProps> = ({
         
         // Set the expression
         try {
-          calculator.setExpression({ id: 'graph1', latex: expression });
+          calculator.setExpression(expression);
         } catch (error) {
           console.error('Error setting expression in Desmos:', error);
         }

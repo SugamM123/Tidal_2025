@@ -5,7 +5,7 @@ import { naturalLanguageToLatex } from '../utils/mathParser';
 interface DesmosModalProps {
   isOpen: boolean;
   onClose: () => void;
-  expression: string;
+  expression: any;
 }
 
 const DesmosModal: React.FC<DesmosModalProps> = ({ isOpen, onClose, expression }) => {
@@ -58,7 +58,7 @@ const DesmosModal: React.FC<DesmosModalProps> = ({ isOpen, onClose, expression }
           )}
           
           <DesmosStudio 
-            initialExpression={processedExpression} 
+            initialExpression={expression} 
             height="400px" 
           />
         </div>

@@ -5,15 +5,19 @@ export interface VideoCommand {
 }
 
 export interface GraphLine {
-  type: 'line';
+  // type: 'line';
   id: string;
-  equation: string;
+  latex: string;
   color: string;
 }
 
 export interface GraphSlider {
-  type: 'slider';
+  // type: 'slider';
   id: string;
+  sliderBounds: sliderBounds;
+}
+
+export interface sliderBounds {
   min: number;
   max: number;
   step: number;
@@ -51,18 +55,20 @@ export const parseGraphCommand = (command: string): GraphCommand => {
     if (parts.length === 4) {
       // Slider: id,min,max,step
       return {
-        type: 'slider' as const,
+        // type: 'slider' as const,
         id: parts[0],
-        min: parseFloat(parts[1]),
-        max: parseFloat(parts[2]),
-        step: parseFloat(parts[3])
+        sliderBounds: { 
+          min: parseFloat(parts[1]),
+          max: parseFloat(parts[2]),
+          step: parseFloat(parts[3])
+        }
       };
     } else if (parts.length === 3) {
       // Line: id,equation,color
       return {
-        type: 'line' as const,
+        // type: 'line' as const,
         id: parts[0],
-        equation: parts[1],
+        latex: parts[1],
         color: parts[2]
       };
     }

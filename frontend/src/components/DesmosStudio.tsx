@@ -1,19 +1,35 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
+interface DesmosExpression {
+  id: string;
+  latex: string;
+  color?: string;
+  sliderBounds?: {
+    min: number;
+    max: number;
+    step: number;
+  };
+}
+
+interface DesmosGraphData {
+  type: string;
+  elements: DesmosExpression[];
+}
+
 interface DesmosStudioProps {
-  initialExpression?: string;
+  initialExpression?: DesmosGraphData;
   height?: string;
   width?: string;
 }
 
 const DesmosStudio: React.FC<DesmosStudioProps> = ({
-  initialExpression = '',
+  initialExpression = {},
   height = '400px',
   width = '100%'
 }) => {
-  const [expression, setExpression] = useState(initialExpression);
+  const [expression, setExpression] = useState<string>('');
   const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const calculatorRef = useRef<any>(null);
   const expressionRef = useRef<HTMLTextAreaElement>(null);
@@ -32,24 +48,27 @@ const DesmosStudio: React.FC<DesmosStudioProps> = ({
         console.log('Creating Desmos calculator...');
         // Create the calculator
         const calculator = window.Desmos.GraphingCalculator(containerRef.current, {
-          expressions: true,
+          expressionsCollapsed: false,
           settingsMenu: true,
           zoomButtons: true,
           expressionsTopbar: true,
           keypad: false,
           lockViewport: false,
           border: false,
-          invertedColors: true,
-          showGrid: true,
           fontSize: 16
         });
         
         // Set initial expressions if provided
         if (initialExpression) {
           try {
-            calculator.setExpression({ id: 'expr1', latex: initialExpression });
+            // Set each expression from the elements array
+            if (initialExpression.elements && Array.isArray(initialExpression.elements)) {
+              initialExpression.elements.forEach(element => {
+                calculator.setExpression(element);
+              });
+            }
           } catch (error) {
-            console.error('Error setting expression:', error);
+            console.error('Error setting expressions:', error);
           }
         }
         
