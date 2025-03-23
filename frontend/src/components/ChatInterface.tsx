@@ -182,12 +182,15 @@ const ChatInterface: React.FC = () => {
           // Convert graph elements to Desmos format
           const graphExpression = frontmatter.graph.elements
             .map(element => {
-              if (element.type === 'line') {
-                return `${element.id},${element.equation},${element.color}`;
-              } else {
-                return `${element.id},${element.min},${element.max},${element.step}`;
+              if ('latex' in element) {
+                return `${element.id},${element.latex},${element.color || ''}`;
+              } else if ('sliderBounds' in element) {
+                const { min, max, step } = element.sliderBounds;
+                return `${element.id},${min},${max},${step}`;
               }
+              return '';
             })
+            .filter(Boolean)
             .join('|');
           
           setCurrentExpression(graphExpression);

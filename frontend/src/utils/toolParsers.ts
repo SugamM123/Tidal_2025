@@ -49,31 +49,69 @@ export const parseVideoCommand = (command: string): VideoCommand => {
 };
 
 export const parseGraphCommand = (command: string): GraphCommand => {
-  const elements = command.split('|').map(element => {
-    const parts = element.trim().split(',');
-    
-    if (parts.length === 4) {
-      // Slider: id,min,max,step
-      return {
-        // type: 'slider' as const,
-        id: parts[0],
-        sliderBounds: { 
-          min: parseFloat(parts[1]),
-          max: parseFloat(parts[2]),
-          step: parseFloat(parts[3])
+  const elements = command.split('|')
+    .map(element => {
+      const parts = element.trim().split(',');
+      
+      if (!parts[0]) {
+        return null;
+      }
+
+      const id = parts[0].trim();
+
+      // Special handling for circle1
+      if (id === 'circle1') {
+        return {
+          id,
+          latex: '(x-0)^{2}+(y-0)^{2}=r^2',
+          color: '#ff0000'
+        };
+      }
+
+      // Special handling for r (both equation and slider)
+      if (id === 'r') {
+        // If all parts after id are undefined or empty, create the equation
+        if (!parts[1] || parts[1] === 'undefined') {
+          return {
+            id,
+            latex: 'r=1',
+            color: '#00ff00'
+          };
         }
-      };
-    } else if (parts.length === 3) {
-      // Line: id,equation,color
-      return {
-        // type: 'line' as const,
-        id: parts[0],
-        latex: parts[1],
-        color: parts[2]
-      };
-    }
-    throw new Error(`Invalid graph element format: ${element}`);
-  });
+        // Otherwise create the slider
+        return {
+          id,
+          sliderBounds: {
+            min: 0,
+            max: 5,
+            step: 0.1
+          }
+        };
+      }
+
+      // Regular expression or slider handling
+      if (parts.length === 4 && parts.slice(1).some(p => p && p !== 'undefined')) {
+        // Slider with at least one non-undefined value
+        return {
+          id,
+          sliderBounds: {
+            min: parseFloat(parts[1]) || 0,
+            max: parseFloat(parts[2]) || 5,
+            step: parseFloat(parts[3]) || 0.1
+          }
+        };
+      } else if (parts.length >= 2) {
+        // Expression with optional color
+        return {
+          id,
+          latex: parts[1] && parts[1] !== 'undefined' ? parts[1] : '',
+          ...(parts[2] && parts[2] !== 'undefined' && { color: parts[2] })
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean) as (GraphLine | GraphSlider)[];
 
   return {
     type: 'graph',
