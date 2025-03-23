@@ -3,7 +3,7 @@ import MediaViewer from './MediaViewer';
 
 export interface MediaItem {
   id: string | number;
-  type: 'video' | 'image' | 'desmos' | 'pdf';
+  type: 'video' | 'image' | 'desmos' | 'pdf' | 'excalidraw';
   src: string;
   title?: string;
   thumbnail?: string;
@@ -83,6 +83,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                     {item.type === 'image' && <i className="fas fa-image text-2xl text-gray-400"></i>}
                     {item.type === 'desmos' && <i className="fas fa-chart-line text-2xl text-gray-400"></i>}
                     {item.type === 'pdf' && <i className="fas fa-file-pdf text-2xl text-gray-400"></i>}
+                    {item.type === 'excalidraw' && <i className="fas fa-draw-polygon text-2xl text-gray-400"></i>}
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-medium truncate">{item.title || 'Untitled'}</div>

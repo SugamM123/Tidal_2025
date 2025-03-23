@@ -1,6 +1,10 @@
 import React from 'react';
+import ProfileButton from './ProfileButton';
+import { useAuth0 } from '@auth0/auth0-react';
 
 const Header: React.FC = () => {
+  const { user } = useAuth0();
+  
   return (
     <header className="bg-[#1e1e1e] text-white p-4 flex justify-between items-center">
       <div className="flex items-center gap-2">
@@ -16,9 +20,7 @@ const Header: React.FC = () => {
         <button className="p-2 hover:bg-[#2a2a2a] rounded-lg">
           <i className="fas fa-cog"></i>
         </button>
-        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-          <span>H</span>
-        </div>
+        <ProfileButton />
       </div>
     </header>
   );
