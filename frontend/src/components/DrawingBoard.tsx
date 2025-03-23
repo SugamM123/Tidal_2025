@@ -67,8 +67,9 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         {onClose && (
           <button 
             onClick={onClose}
-            className="ml-2 p-1 rounded-full hover:bg-gray-700 transition-colors"
+            className="ml-2 p-1 rounded-full hover:bg-gray-700 transition-colors z-10"
             aria-label="Close drawing board"
+            style={{ position: 'relative', zIndex: 100 }}
           >
             <i className="fas fa-times"></i>
           </button>

@@ -9,16 +9,22 @@ import { extractFrontmatter } from '../utils/frontmatterParser';
 import { ParsedFrontmatter } from '../utils/toolParsers';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
+import DrawingBoard from './DrawingBoard';
+import { excalidrawService } from './ExcalidrawService';
+import { ExcalidrawElement } from "@excalidraw/excalidraw";
 // Drawing imports removed - now using frontmatter for diagrams
 
 interface Message {
   id: number;
   text: string;
   sender: 'user' | 'bot';
-  graphExpression?: string;
-  frontmatter?: ParsedFrontmatter;
-  video?: string;
-  videoList?: { key: string; size: number; last_modified: string; url: string }[];
+  mathExpression?: string;
+  medias?: MediaItem[];
+  videoUrl?: string;
+  videoList?: any[];
+  drawingPrompt?: string;
+  drawingData?: ExcalidrawElement[];
+  video?: string; // Added from the second version
 }
 
 interface Video {
@@ -41,6 +47,10 @@ const ChatInterface: React.FC = () => {
   const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const [drawingModalOpen, setDrawingModalOpen] = useState(false);
+  const [currentDrawingPrompt, setCurrentDrawingPrompt] = useState('');
+  const [generatedDrawingData, setGeneratedDrawingData] = useState<ExcalidrawElement[]>([]);
+  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
   // Drawing board state removed - now using frontmatter for diagrams
 
   useEffect(() => {
@@ -73,10 +83,58 @@ const ChatInterface: React.FC = () => {
       {
         id: Date.now(),
         text: userMessage,
-        sender: 'user',
-      },
+        sender: 'user'
+      }
     ]);
-    
+
+    // Check for command first
+    const commandResult = processCommand(userMessage);
+    if (commandResult.isCommand) {
+      // Handle command logic...
+    }
+
+    // Extract frontmatter before checking for diagram commands
+    const frontmatter = extractFrontmatter(userMessage);
+
+    // Handle diagram commands
+    if (frontmatter?.tool === 'diagram' || userMessage.toLowerCase().includes('/diagram') || userMessage.toLowerCase().includes('/draw')) {
+      try {
+        // Generate diagram
+        const diagramPrompt = frontmatter?.prompt || userMessage;
+        const elements = await excalidrawService.generateDiagram(diagramPrompt);
+        
+        // Add bot response with diagram
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: `Here's a diagram based on your request: "${diagramPrompt}"`,
+            sender: 'bot',
+            drawingPrompt: diagramPrompt,
+            drawingData: elements
+          }
+        ]);
+        
+        // Open the drawing modal
+        setCurrentDrawingPrompt(diagramPrompt);
+        setGeneratedDrawingData(elements);
+        setDrawingModalOpen(true);
+      } catch (error) {
+        console.error("Error generating diagram:", error);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: `Sorry, I couldn't generate a diagram: ${error instanceof Error ? error.message : "Unknown error"}`,
+            sender: 'bot'
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // If user is not authenticated, prompt login
     if (!isAuthenticated) {
       const shouldLogin = window.confirm('Please log in to use the chat. Would you like to log in now?');
@@ -195,15 +253,39 @@ const ChatInterface: React.FC = () => {
         }
 
         if (frontmatter.diagram?.mermaidCode) {
-          // Add mermaid diagram to messages
-          setMessages(prev => [
-            ...prev,
-            {
-              id: Date.now() + 1,
-              text: `\`\`\`mermaid\n${frontmatter.diagram!.mermaidCode}\n\`\`\``,
-              sender: 'bot'
-            },
-          ]);
+          try {
+            // Convert mermaid code to Excalidraw elements
+            const elements = await excalidrawService.generateMermaidDiagram(frontmatter.diagram.mermaidCode);
+            
+            // Add bot response with diagram
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                text: `Here's a diagram visualization:`,
+                sender: 'bot',
+                drawingPrompt: `Mermaid diagram: ${frontmatter.diagram.mermaidCode.substring(0, 50)}...`,
+                drawingData: elements
+              }
+            ]);
+            
+            // Optionally open the drawing modal
+            setCurrentDrawingPrompt(`Mermaid diagram converted to Excalidraw`);
+            setGeneratedDrawingData(elements);
+            setDrawingModalOpen(true);
+          } catch (error) {
+            console.error("Error converting mermaid to Excalidraw:", error);
+            
+            // Fall back to rendering the mermaid code directly
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                text: `\`\`\`mermaid\n${frontmatter.diagram!.mermaidCode}\n\`\`\``,
+                sender: 'bot'
+              }
+            ]);
+          }
         }
 
         // Check for mathematical expressions in content
@@ -280,6 +362,16 @@ const ChatInterface: React.FC = () => {
     setDesmosModalOpen(true);
   };
 
+  // Add this handler to toggle the drawing board
+  const handleToggleDrawingBoard = () => {
+    setShowDrawingBoard(!showDrawingBoard);
+    if (!showDrawingBoard) {
+      // Clear existing elements when opening empty drawing board
+      setGeneratedDrawingData([]);
+      setCurrentDrawingPrompt('');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -314,6 +406,16 @@ const ChatInterface: React.FC = () => {
             className="px-3 py-1 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
           >
             New Conversation
+          </button>
+          <button
+            onClick={handleToggleDrawingBoard}
+            className={`px-4 py-2 rounded-lg hover:bg-gray-600 text-white ${
+              showDrawingBoard ? 'bg-blue-600' : 'bg-gray-700'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
+          >
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'} mr-2`}></i>
+            {showDrawingBoard ? 'Close Drawing' : 'Open Drawing'}
           </button>
           {/* Drawing board button removed - now using frontmatter for diagrams */}
         </div>
@@ -388,6 +490,18 @@ const ChatInterface: React.FC = () => {
                       No videos found in storage.
                     </div>
                   )}
+                  
+                  {message.drawingData && (
+                    <div className="mt-2">
+                      <DrawingBoard
+                        initialData={message.drawingData}
+                        prompt={message.drawingPrompt}
+                        height="400px"
+                        className="border border-gray-700 rounded-lg overflow-hidden"
+                        onClose={() => setDrawingModalOpen(false)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -435,7 +549,16 @@ const ChatInterface: React.FC = () => {
             placeholder="Ask a question, generate visualizations, or mention math concepts..."
             disabled={isLoading}
           />
-          {/* Drawing board button removed - now using frontmatter for diagrams */}
+          <button
+            type="button"
+            onClick={handleToggleDrawingBoard}
+            className={`px-4 py-2 rounded-lg text-white ${
+              showDrawingBoard ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
+          >
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'}`}></i>
+          </button>
           <button
             type="submit"
             className={`px-4 py-2 rounded-lg text-white ${
@@ -458,6 +581,56 @@ const ChatInterface: React.FC = () => {
         onClose={() => setDesmosModalOpen(false)}
         expression={currentExpression}
       />
+      
+      {/* Replace the existing drawing modal with the new approach */}
+      {showDrawingBoard && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col relative">
+            {/* Add a persistent close button that sits above the Excalidraw component */}
+            <button 
+              onClick={handleToggleDrawingBoard}
+              className="absolute top-2 right-2 p-2 bg-gray-800 rounded-full text-white hover:bg-gray-700 z-50"
+              style={{ boxShadow: '0 0 5px rgba(0,0,0,0.5)' }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            
+            <div className="flex-1 overflow-auto flex items-center justify-center">
+              <DrawingBoard 
+                width="100%" 
+                height="600px" 
+                className="border border-gray-700 rounded-lg overflow-hidden"
+                initialData={generatedDrawingData.length > 0 ? generatedDrawingData : []}
+                prompt={currentDrawingPrompt || "Start drawing or type a prompt to generate a diagram"}
+                onClose={handleToggleDrawingBoard}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Also update the second drawing modal for consistency */}
+      {drawingModalOpen && !showDrawingBoard && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg w-11/12 h-5/6 max-w-6xl max-h-screen overflow-hidden relative">
+            {/* Add a persistent close button that sits above the Excalidraw component */}
+            <button 
+              onClick={() => setDrawingModalOpen(false)}
+              className="absolute top-2 right-2 p-2 bg-gray-800 rounded-full text-white hover:bg-gray-700 z-50"
+              style={{ boxShadow: '0 0 5px rgba(0,0,0,0.5)' }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            
+            <DrawingBoard
+              initialData={generatedDrawingData}
+              prompt={currentDrawingPrompt}
+              height="100%"
+              onClose={() => setDrawingModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
       
       {/* Drawing board removed in favor of frontmatter-based diagram rendering */}
     </div>
