@@ -107,40 +107,44 @@ def list_videos():
     bucket_name = 'alpha-tidal-2025'
     
     try:
-        # List all objects in the bucket
+        # Use the same S3 client instance as the successful /run endpoint
+        # No need to recheck credentials since /run works
+        
+        # List all objects in the bucket directly, like in /run
         response = s3.list_objects_v2(Bucket=bucket_name)
         
         if 'Contents' not in response:
             return jsonify({"videos": []})
         
-        # Extract file names and generate pre-signed URLs for each
+        # Extract file names and generate pre-signed URLs with same pattern as /run
         videos = []
         for obj in response['Contents']:
             key = obj['Key']
             if key.endswith('.mp4'):  # Filter for video files
-                size = obj['Size']
-                last_modified = obj['LastModified'].strftime('%Y-%m-%d %H:%M:%S')
+                # Generate URL with same params as the working /run endpoint
                 url = s3.generate_presigned_url(
                     ClientMethod='get_object',
                     Params={'Bucket': bucket_name, 'Key': key},
-                    ExpiresIn=3600  # URL expires in 1 hour
+                    ExpiresIn=None  # Match the /run endpoint which uses no expiry
                 )
+                
                 videos.append({
                     "key": key,
-                    "size": size,
-                    "last_modified": last_modified,
+                    "size": obj['Size'],
+                    "last_modified": obj['LastModified'].strftime('%Y-%m-%d %H:%M:%S'),
                     "url": url
                 })
-                
+        
+        # Return results
         return jsonify({"videos": videos})
     except Exception as e:
         return jsonify({"error": f"Failed to list videos: {str(e)}"}), 500
 
-@app.route('/api/welcome')
-def home():
-    return jsonify(message="SUP")
+# @app.route('/api/welcome')
+# def home():
+#     return jsonify(message="SUP")
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port)
