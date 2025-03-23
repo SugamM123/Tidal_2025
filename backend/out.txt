@@ -1,0 +1,728 @@
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Step 1: Introduction to Stacks
+
+        # 1. Create a vertical rectangle labeled "Stack"
+        stack_rect = Rectangle(width=2, height=3, color=BLUE)
+        stack_label = Text("Stack").next_to(stack_rect, UP)
+        self.play(Create(stack_rect), Write(stack_label))
+        self.wait(0.5)
+
+        # 2. Add data elements one by one, stacking them vertically.
+        elements = ["A", "B", "C"]
+        element_rects = []
+        for i, element in enumerate(elements):
+            rect = Rectangle(width=1.5, height=0.5, color=GREEN, fill_opacity=1)
+            text = Text(element).move_to(rect.get_center())
+            group = VGroup(rect, text)
+
+            if i == 0:
+                rect.move_to(stack_rect.get_center() + DOWN * 1)
+            else:
+                rect.move_to(element_rects[i-1].get_center() + UP * 0.6)
+
+
+            element_rects.append(rect)
+            self.play(Create(rect), Write(text), run_time=0.5)
+            self.wait(0.25)
+```
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Assuming the stack from Step 1 exists with name 'stack_rect' and has elements
+        # Also assuming elements are named 'element_A', 'element_B', 'element_C'
+
+        # Placeholder Stack rectangle (replace with actual stack initialization from Step 1)
+        stack_rect = Rectangle(width=2, height=3, color=BLUE)
+        self.add(stack_rect)
+
+        # Placeholder elements (replace with actual elements from Step 1)
+        element_A = Rectangle(width=1.8, height=0.5, color=WHITE, fill_opacity=1).move_to(stack_rect.get_center() + DOWN * 0.75)
+        element_B = Rectangle(width=1.8, height=0.5, color=WHITE, fill_opacity=1).move_to(stack_rect.get_center())
+        element_C = Rectangle(width=1.8, height=0.5, color=WHITE, fill_opacity=1).move_to(stack_rect.get_center() + UP * 0.75)
+
+        self.add(element_A, element_B, element_C) #ensure element A,B,C are added.
+
+        # New element "D"
+        element_D = Rectangle(width=1.8, height=0.5, color=YELLOW, fill_opacity=1)
+        element_D.move_to(stack_rect.get_center() + LEFT * 3) # Place to the left of the stack
+        text_D = Text("D").move_to(element_D.get_center())
+        element_group_D = VGroup(element_D,text_D)
+
+        # Push(D) label
+        push_label = Tex("Push(D)")
+        push_label.move_to(element_D.get_center() + UP * 1)  # Position near the moving rectangle
+
+        # Animation
+        self.play(Create(element_group_D),Write(push_label)) # Display element D and the label
+
+        target_position = stack_rect.get_center() + UP * 1.5 # Position D at the top of the stack
+        self.play(element_group_D.animate.move_to(target_position), run_time=2) # Animate the move
+        
+        self.wait(0.5) # small pause
+        self.play(FadeOut(push_label), run_time=1) # Fade out the label
+
+        self.wait(1) # Pause before next step
+```
+---
+```python
+from manim import Scene, Rectangle, Text, Write, FadeOut, Create, MoveAlongPath, Circle, UP, RIGHT, LEFT, GREEN, WHITE, Transform
+import numpy as np
+
+class MyScene(Scene):
+    def construct(self):
+        # Initial stack elements (assuming from previous steps)
+        rect1 = Rectangle(width=1, height=1).shift(DOWN * 2)
+        text1 = Text("A").move_to(rect1.get_center())
+        rect2 = Rectangle(width=1, height=1).shift(DOWN * 1)
+        text2 = Text("B").move_to(rect2.get_center())
+        rect3 = Rectangle(width=1, height=1).shift(UP * 0)
+        text3 = Text("C").move_to(rect3.get_center())
+        rect4 = Rectangle(width=1, height=1).shift(UP * 1)
+        text4 = Text("D").move_to(rect4.get_center())
+        
+        self.add(rect1, text1, rect2, text2, rect3, text3, rect4, text4)
+        self.wait(0.5)
+        
+        # 1. Highlight the top element ("D")
+        highlight_circle = Circle(radius=0.6, color=GREEN).move_to(rect4.get_center())
+        self.play(Create(highlight_circle))
+        self.wait(0.5)
+
+        # 2. Animate the top element moving out of the stack
+        pop_text = Text("Pop()", font_size=24).to_corner(UP + LEFT)
+        self.play(Write(pop_text))
+        self.wait(0.3)
+        
+        # Create a path for the element to move along
+        path = np.array([rect4.get_center(), rect4.get_center() + RIGHT*2])
+        
+        self.play(
+            MoveAlongPath(rect4, path),
+            MoveAlongPath(text4, path),
+            run_time=1.0
+        )
+        self.wait(0.3)
+
+        # 3. Remove the highlighted rectangle ("D") and highlight circle
+        self.play(
+            FadeOut(rect4),
+            FadeOut(text4),
+            FadeOut(highlight_circle),
+            FadeOut(pop_text),
+            run_time=0.5
+        )
+        self.wait(0.5)
+```
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Title
+        title = Text("Stack Data Structure")
+        self.play(Write(title))
+        self.wait(1)
+
+        # Stack representation
+        stack_elements = ["Data 3", "Data 2", "Data 1"]
+        rects = VGroup()
+        for i, element in enumerate(stack_elements):
+            rect = Rectangle(width=2.0, height=0.7, grid_xstep=2.0, grid_ystep=0.7)
+            label = Text(element).scale(0.7)
+            rects.add(VGroup(rect, label).arrange(DOWN, buff=0))
+
+        stack = VGroup(*rects).arrange(DOWN, buff=0)
+        stack.next_to(title, DOWN, buff=1)
+        self.play(Create(stack))
+
+        # Top arrow
+        arrow = Arrow(start=stack[0].get_top() + UP * 0.5, end=stack[0].get_top(), buff=0)
+
+        top_label = Text("Top", font_size=24).next_to(arrow.get_start(), RIGHT)
+
+        self.play(Create(arrow), Write(top_label))
+
+        explanation_text = Text("A stack is a linear data structure that follows the Last-In, First-Out (LIFO) principle.\n"
+                                 "This means the last element added to the stack is the first element removed.\n"
+                                 "Think of it like a stack of plates.",
+                                font_size=20,
+                                ).next_to(stack, DOWN, buff=0.75)
+        self.play(Write(explanation_text))
+
+        self.wait(2)
+        self.play(FadeOut(explanation_text))
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Display "Push Operation" text
+        push_text = Text("Push Operation", font_size=36).to_edge(UP + LEFT)
+        self.add(push_text)
+
+        # Create existing stack elements (Data 1, Data 2, Data 3, and Top arrow)
+        data1 = Rectangle(width=2, height=0.75, color=BLUE, fill_opacity=0.5)
+        data1.to_edge(DOWN, buff=1)  # Positioned at the bottom
+        data1_label = Text("Data 1", font_size=24).move_to(data1)
+
+        data2 = Rectangle(width=2, height=0.75, color=BLUE, fill_opacity=0.5)
+        data2.next_to(data1, UP, buff=0)
+        data2_label = Text("Data 2", font_size=24).move_to(data2)
+        
+        data3 = Rectangle(width=2, height=0.75, color=BLUE, fill_opacity=0.5)
+        data3.next_to(data2, UP, buff=0)
+        data3_label = Text("Data 3", font_size=24).move_to(data3)
+
+        top_arrow = Arrow(start=data3.get_right() + RIGHT*1.5, end=data3.get_right()+ RIGHT*0.2, color=RED, buff=0.1)  # Buff added
+        top_text = Text("Top", font_size=24, color=RED).next_to(top_arrow, RIGHT)
+
+        self.add(data1, data1_label, data2, data2_label, data3, data3_label, top_arrow, top_text)
+        
+
+        # Create "Data 4" block
+        data4 = Rectangle(width=2, height=0.75, color=BLUE, fill_opacity=0.5)
+        data4_label = Text("Data 4", font_size=24).move_to(data4)
+        data4.next_to(data3, UP, buff=0).shift(RIGHT * 10)  # Start off-screen
+        self.play(data4.animate.shift(LEFT * 10))  # Move onto the screen
+
+        # Move "Top" arrow
+        self.play(
+            top_arrow.animate.put_start_and_end_on(data4.get_right() + RIGHT*1.5, data4.get_right() + RIGHT * 0.2),
+            top_text.animate.next_to(top_arrow, RIGHT) #update the text location.
+            )
+
+        self.wait(1)
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Previous stack elements (for context)
+        data1 = Rectangle(width=2, height=1, fill_opacity=0.5, color=BLUE).shift(DOWN)
+        text1 = Text("Data 1").move_to(data1)
+        data2 = Rectangle(width=2, height=1, fill_opacity=0.5, color=BLUE).next_to(data1, UP, buff=0)
+        text2 = Text("Data 2").move_to(data2)
+        
+        # Data 4 (to be popped)
+        data4 = Rectangle(width=2, height=1, fill_opacity=0.5, color=BLUE).next_to(data2, UP, buff=0)
+        text4 = Text("Data 4").move_to(data4)
+
+        # Top arrow (initial position)
+        top_arrow = Arrow(start=UP, end=DOWN).next_to(data4, LEFT)
+        top_text = Text("Top", font_size=24).next_to(top_arrow, LEFT)
+        top_group = VGroup(top_arrow, top_text)
+        
+        #Initial setup for context
+        self.add(data1, text1, data2, text2, data4, text4, top_group)
+
+
+        # Display "Pop Operation" text
+        pop_text = Text("Pop Operation").to_edge(UL)
+        self.play(Write(pop_text))
+        self.wait(0.5)
+        push_text = Text("Push Operation").to_edge(UL) # Placeholder to be replaced.
+        self.add(push_text) # Added to be able to transform it.
+        self.play(Transform(push_text, pop_text))
+        self.remove(push_text) #Remove placeholder after transforming
+        self.add(pop_text)
+
+
+        # Animate Data 4 moving up and right
+        self.play(
+            data4.animate.shift(UP * 2 + RIGHT * 4),
+            FadeOut(text4),
+        )
+        self.remove(data4)
+
+        # Move Top arrow down
+        new_top_group = VGroup(top_arrow, top_text).next_to(data2, LEFT)
+        self.play(
+            Transform(top_group, new_top_group),
+        )
+
+        # Explanation
+        explanation_text = Text("The 'Pop' operation removes the element\nat the top of the stack. Here, we\npop 'Data 4' from the stack.", font_size=24).to_edge(DOWN)
+        self.play(Write(explanation_text))
+        self.wait(2)
+        self.play(FadeOut(explanation_text))
+
+        self.wait(2)
+        self.clear()
+
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Create a Text object labeled "Stack Data Structure"
+        title = Text("Stack Data Structure")
+
+        # Place it at the center top of the screen
+        title.to_edge(UP)
+
+        # Display the text on the screen
+        self.play(Write(title))
+        self.wait(2)
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Title
+        title = Text("Step 2: Visualizing an Empty Stack")
+        self.play(Write(title))
+        self.wait(1)
+        self.play(title.animate.to_edge(UP))
+
+
+        # Rectangle representing the stack
+        stack_rect = Rectangle(
+            width=config.frame_width / 3,
+            height=config.frame_height * 2 / 3,
+            stroke_color=WHITE,
+            fill_opacity=0
+        )
+        stack_rect.move_to(DOWN * (config.frame_height/2 - stack_rect.height/2) + (config.frame_height * 1/12)*UP ) # Center horizontally, adjust vertical
+        self.play(Create(stack_rect))
+
+        # Stack label
+        stack_label = Text("Stack")
+        stack_label.next_to(stack_rect, DOWN)
+        self.play(Write(stack_label))
+
+        # Explanation
+        explanation = Text("This rectangle represents our empty stack.  Right now, there's nothing in it.", font_size=24)
+        explanation.next_to(title, DOWN)
+        self.play(Write(explanation))
+        self.wait(2)
+        self.play(FadeOut(explanation))
+
+        # Create the VGroup for the stack (empty for now)
+        stack_group = VGroup()
+        stack_group.add(stack_rect)
+
+
+        self.wait(2)
+```
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Create the stack (rectangle)
+        stack = Rectangle(width=2, height=4, color=WHITE, fill_opacity=0.2)
+        stack.move_to(RIGHT * 2)
+        self.add(stack)
+
+        # 1. Create three squares with labels
+        colors = [RED, BLUE, GREEN]
+        labels = ["A", "B", "C"]
+        squares = []
+        for i in range(3):
+            square = Square(color=colors[i], fill_opacity=0.5)
+            label = Text(labels[i]).move_to(square.get_center())
+            square.add(label)  # Group square and label
+            square.move_to(LEFT * 4 + DOWN * i)
+            squares.append(square)
+            self.add(square)
+
+        # 2. Animate the addition of each square to the stack
+        for i, square in enumerate(squares):
+            # Calculate target position within the stack
+            target_position = stack.get_top() + DOWN * (i * square.height)
+            target_position[0]=stack.get_center()[0]
+
+            # Animate movement
+            self.play(
+                square.animate(rate_func=smooth).move_to(target_position)
+            )
+
+            # 3. Add and fade out "PUSH" label
+            push_label = Text(f"PUSH '{labels[i]}'", font_size=24).next_to(square, RIGHT)
+            self.play(Write(push_label))
+            self.wait(0.5)
+            self.play(FadeOut(push_label))
+            self.wait(0.5)  # Add a small delay after fading out
+        
+        #Keep the stack and squares on screen for the next step.
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # 1. Create Text
+        title = Text("Stack Data Structure")
+        title.to_edge(UP)
+        explanation1 = Text("A stack is a linear data structure that follows the Last In, First Out (LIFO) principle.", font_size=24).next_to(title, DOWN)
+        self.play(Write(title), Write(explanation1))
+        self.wait(1)
+
+        # 2. Create Stack Representation
+        stack_height = 4
+        stack_width = 2
+        cell_height = 0.8
+        
+        stack_rect = Rectangle(height=stack_height, width=stack_width)
+        stack_rect.move_to(ORIGIN)
+
+        explanation2 = Text("Imagine a stack of plates; you can only add or remove plates from the top.", font_size=24).next_to(stack_rect, DOWN)
+
+        cells = VGroup()
+        for i in range(int(stack_height / cell_height)):
+            cell = Rectangle(height=cell_height, width=stack_width)
+            cell.next_to(stack_rect.get_top() + i * DOWN * cell_height, aligned_edge=DOWN)
+            cells.add(cell)
+
+        self.play(Create(stack_rect), Create(cells),  run_time=2)
+        self.play(Write(explanation2))
+        self.wait(2)
+
+        #3. Clear/Fade: Keep Text, and stack representation
+        self.wait(2)
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Stack Representation (from Step 1, adapted)
+        stack_height = 4
+        stack_width = 2
+        stack_cells = VGroup(*[Rectangle(height=1, width=stack_width) for _ in range(stack_height)])
+        stack_cells.arrange(DOWN, buff=0)
+        stack_cells.move_to(ORIGIN)
+        stack_label = Text("Stack").next_to(stack_cells, UP)
+        self.add(stack_cells, stack_label)  # Keep stack on screen
+
+        # Keep track of elements in the stack (for positioning later)
+        stack_elements = []
+
+        # --- Push Operation ---
+        def push_element(element_label, color=WHITE):
+            # 1. Create Element
+            element = Text(element_label, color=color)
+            element.move_to(stack_cells.get_top() + RIGHT * 3 + UP *2)  # Outside, top-right
+            self.play(Create(element),
+                Write(Text(f"Push operation: Adding '{element_label}' to the stack.").next_to(stack_label, DOWN).to_edge(LEFT)))
+
+            # 2. Animate Push
+            target_position = stack_cells[stack_height - 1 - len(stack_elements)].get_center()
+            self.play(
+                element.animate.move_to(target_position),
+                Write(Text(f"The 'push' operation adds a new element to the top.").next_to(stack_label,DOWN).to_edge(LEFT))
+            )
+
+            stack_elements.append(element)
+            #  Explanation
+            if len(stack_elements) > 1:
+                 self.play(Write(Text("We can push multiple elements onto the stack, each becoming the new top.").next_to(stack_label, DOWN).to_edge(LEFT)))
+            self.wait(0.5) #short pause after push
+
+        # Perform Push Operations
+        push_element("A", BLUE)
+        push_element("10", GREEN)
+        push_element("B", ORANGE)
+
+        self.wait(2) # final pause
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Initialize stack representation (from previous steps, assuming it exists)
+        stack_rects = VGroup(*[Rectangle(width=2, height=1) for _ in range(3)])
+        stack_rects.arrange(DOWN, buff=0)
+        stack_labels = VGroup(*[Text(str(i+1)).move_to(stack_rects[i]) for i in range(3)])
+
+        stack_group = VGroup(stack_rects, stack_labels)  # Group rectangles and labels
+        self.add(stack_group)
+
+
+        # Explanation text (Step 3, part 1)
+        explanation = Text("Pop operation: Removing the element from the top of the stack.").to_edge(UP)
+        self.add(explanation)
+
+        # --- Step 3.1: Highlight Top Element ---
+        top_element = stack_rects[0]
+        top_label = stack_labels[0]
+
+        highlight_rect = SurroundingRectangle(top_element, buff=0.1, color=YELLOW)
+        self.play(Create(highlight_rect))
+        self.wait(0.5)
+
+
+        # --- Step 3.2: Animate Pop ---
+        # Explanation (Step 3, part 2)
+        explanation2 = Text("The 'pop' operation removes the top element from the stack.").to_edge(UP) #Create a new text object, so as not to overwrite the original
+        self.play(Transform(explanation, explanation2))
+
+        self.play(
+            top_element.animate.shift(RIGHT * 3),
+            top_label.animate.shift(RIGHT*3),
+            FadeOut(highlight_rect)
+        )
+        self.wait(0.5)
+        stack_rects.remove(top_element) #Remove the rectangle from its VGroup
+        stack_labels.remove(top_label)  #Remove the label from its VGroup
+        self.remove(top_element)       #Remove the rectangle from the screen
+        self.remove(top_label)          #Remove the label from the screen
+        
+
+        # --- Step 3.3: Repeat Pop (Optional - once more) ---
+        # Explanation (Step 3, part 3)
+        explanation3 = Text("Each pop operation removes the current top element, revealing the next.").to_edge(UP)
+        self.play(Transform(explanation, explanation3))
+
+        if len(stack_rects) > 0:
+            top_element = stack_rects[0]
+            top_label = stack_labels[0]
+            highlight_rect = SurroundingRectangle(top_element, buff=0.1, color=YELLOW)
+            self.play(Create(highlight_rect))
+            self.wait(0.5)
+
+            self.play(
+                top_element.animate.shift(RIGHT * 3),
+                top_label.animate.shift(RIGHT*3),
+                FadeOut(highlight_rect)
+            )
+            stack_rects.remove(top_element)
+            stack_labels.remove(top_label)
+            self.remove(top_element)
+            self.remove(top_label)
+            self.wait(0.5)
+
+
+        # --- Step 3.4: Clear/Fade (Keep relevant elements) ---
+        # Keep stack representation, remaining elements, and the explanations.
+        self.wait(2)
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Stack Representation (from previous steps, simplified for this example)
+        stack_elements = ["5", "10", "15"]  # Example stack content
+        stack_rects = VGroup(*[
+            Rectangle(width=2, height=1).set_fill(BLUE, opacity=0.5)
+            for _ in stack_elements
+        ])
+        stack_rects.arrange(DOWN, buff=0)
+        stack_labels = VGroup(*[
+            Text(elem).move_to(stack_rects[i])
+            for i, elem in enumerate(stack_elements)
+        ])
+        
+        stack_group = VGroup(stack_rects, stack_labels)
+        stack_group.move_to(ORIGIN)
+
+        self.add(stack_group)
+        
+        # 1. Highlight Top Element
+        if stack_elements:  # Check if the stack is not empty
+            top_rect = stack_rects[-1]
+            self.play(
+                top_rect.animate.set_fill(YELLOW, opacity=0.8),
+            )
+
+            # 2. Display Value
+            top_value = Text(f"{stack_elements[-1]}").next_to(top_rect, RIGHT)
+            self.play(
+                Write(top_value),
+            )
+            self.wait(1)
+
+            # 3. Fade Out Displayed Value
+            self.play(
+                FadeOut(top_value),
+                top_rect.animate.set_fill(BLUE, opacity=0.5)  #reset the color
+            )
+            self.wait(1)
+
+        else:
+            # Handle empty stack case (optional, for completeness)
+            empty_text = Text("Stack is empty").move_to(ORIGIN)
+            self.play(Write(empty_text))
+            self.wait(1)
+            self.play(FadeOut(empty_text))
+
+
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Helper function to create a stack representation
+        def create_stack(elements, max_height=4, cell_size=0.7):
+            stack_cells = VGroup(*[Rectangle(width=cell_size, height=cell_size) for _ in range(max_height)])
+            stack_cells.arrange(DOWN, buff=0)
+            stack_cells.move_to(ORIGIN)
+
+            element_texts = VGroup()
+            for i, element in enumerate(elements):
+                text = Tex(str(element)).scale(0.7)
+                text.move_to(stack_cells[i].get_center())
+                element_texts.add(text)
+
+            return stack_cells, element_texts
+
+        # --- isEmpty Operation ---
+        self.play(Write(Tex("isEmpty Operation").to_edge(UP)))
+        explanation = Tex("isEmpty operation: Checking if the stack is empty.").scale(0.7).next_to(Tex("isEmpty Operation"), DOWN)
+        self.play(Write(explanation))
+        self.wait(1)
+
+        # Empty Stack
+        empty_stack_cells, empty_element_texts = create_stack([])
+        stack_group = VGroup(empty_stack_cells, empty_element_texts)
+        self.play(Create(stack_group))
+        self.wait(1)
+
+        is_empty_result = Tex("Stack is empty: True").scale(0.8).next_to(stack_group, DOWN)
+        self.play(Write(is_empty_result))
+        self.wait(1)
+        
+        explanation2 = Tex("`isEmpty` returns 'True' if the stack has no elements, 'False' otherwise.").scale(0.6).next_to(is_empty_result,DOWN)
+        self.play(Write(explanation2))
+        self.wait(2)
+        self.play(FadeOut(is_empty_result), FadeOut(explanation2),FadeOut(stack_group))
+
+        # --- isFull Operation (Conceptual) ---
+        self.play(FadeOut(explanation))
+        self.play(Write(Tex("isFull Operation").to_edge(UP)))
+        
+        explanation = Tex("isFull operation: Checking if the stack is full (in a fixed-size implementation).").scale(0.6).next_to(Tex("isFull Operation"), DOWN)
+        self.play(Write(explanation))
+        self.wait(1)
+
+        # Full Stack (Conceptual - 4 elements)
+        full_stack_cells, full_element_texts = create_stack([1, 2, 3, 4])
+        full_stack_group = VGroup(full_stack_cells, full_element_texts)
+
+        self.play(Create(full_stack_group))
+        self.wait(1)
+
+        is_full_result = Tex("Stack is full: True").scale(0.8).next_to(full_stack_group, DOWN)
+        self.play(Write(is_full_result))
+        self.wait(1)
+
+        explanation2 = Tex("`isFull` returns 'True' if the stack has reached its maximum capacity, 'False' otherwise.",
+                          "Note: In many implementations, stacks can grow dynamically, so 'isFull' is less relevant."
+                          ).scale(0.5).next_to(is_full_result, DOWN)
+        self.play(Write(explanation2))
+        self.wait(3)
+        self.play(FadeOut(full_stack_group), FadeOut(is_full_result), FadeOut(explanation2),FadeOut(explanation), FadeOut(Tex("isFull Operation")))
+        self.wait(1)
+```
+
+---
+```python
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # 1. Create Text: Applications of Stack
+        applications_title = Text("Applications of Stack").scale(1.2)
+        explanation_text = Text("Stacks are used in many algorithms and applications.", font_size=24).next_to(applications_title, DOWN)
+        self.play(Write(applications_title))
+        self.play(Write(explanation_text))
+        self.wait(1)
+        self.play(FadeOut(explanation_text))
+
+        # 2. List Applications
+        # 2.1 Function Call Stack
+        function_call_text = Text("Function Call Stack")
+        function_call_explanation = Text("Managing function calls in programming (recursion).", font_size=24).next_to(function_call_text, DOWN)
+
+        boxes = VGroup()
+        for i in range(3):
+            box = Rectangle(width=2 - 0.3 * i, height=1 - 0.2 * i)
+            boxes.add(box)
+        boxes.arrange(DOWN, buff=0.1)
+        boxes.next_to(function_call_text, RIGHT, buff=0.5)
+        
+        self.play(Write(function_call_text))
+        self.play(Create(boxes))
+        self.play(Write(function_call_explanation))
+        self.wait(1)
+        self.play(FadeOut(function_call_text), FadeOut(boxes), FadeOut(function_call_explanation))
+
+
+        # 2.2 Expression Evaluation
+        expression_text = Text("Expression Evaluation")
+        expression_explanation = Text("Evaluating mathematical expressions (infix to postfix).", font_size=24).next_to(expression_text, DOWN)
+        expression = MathTex("2 + 3 * 4").next_to(expression_text, RIGHT, buff=0.5)
+
+        self.play(Write(expression_text))
+        self.play(Write(expression))
+        self.play(Write(expression_explanation))
+        self.wait(1)
+        self.play(FadeOut(expression_text), FadeOut(expression), FadeOut(expression_explanation))
+
+        # 2.3 Undo/Redo Operations
+        undo_redo_text = Text("Undo/Redo Operations")
+        undo_redo_explanation = Text("Implementing undo/redo functionality in software.", font_size=24).next_to(undo_redo_text, DOWN)
+        arrows = VGroup(
+            Arrow(start=LEFT, end=RIGHT).next_to(undo_redo_text,RIGHT),
+            Arrow(start=RIGHT, end=LEFT).next_to(undo_redo_text,RIGHT, buff = 0.8),
+        )
+
+
+        self.play(Write(undo_redo_text))
+        self.play(Create(arrows))
+        self.play(Write(undo_redo_explanation))
+        self.wait(1)
+        self.play(FadeOut(undo_redo_text), FadeOut(arrows), FadeOut(undo_redo_explanation))
+
+        # 2.4 Backtracking Algorithms
+        backtracking_text = Text("Backtracking Algorithms")
+        backtracking_explanation = Text("Backtracking algorithms, like solving a maze.", font_size=24).next_to(backtracking_text, DOWN)
+
+        # Simplified maze representation (just a grid)
+        maze = VGroup(*[Square() for _ in range(9)]).arrange_in_grid(3, 3, buff=0.1)
+        maze.next_to(backtracking_text, RIGHT)
+        self.play(Write(backtracking_text))
+        self.play(Create(maze))
+        self.play(Write(backtracking_explanation))
+        self.wait(1)
+        self.play(FadeOut(backtracking_text), FadeOut(maze), FadeOut(backtracking_explanation))
+        self.wait(1)
+        self.play(FadeOut(applications_title))
+        self.wait(1)
+```
+
+---

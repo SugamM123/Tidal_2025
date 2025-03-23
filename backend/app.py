@@ -8,9 +8,14 @@ from flask_cors import CORS
 import boto3
 import glob
 import shutil
+from get_steps import generate_steps
+from get_code import generate_code
+from get_combined import generate_combined
+from datetime import datetime
+from moviepy import *
 
 dotenv.load_dotenv()
-openai.api_key = os.getenv("OPEN_AI_API")
+# openai.api_key = os.getenv("OPEN_AI_API")
 
 # Initialize a session using your credentials
 session = boto3.Session(
@@ -24,15 +29,15 @@ s3 = session.client('s3')
 
 config.media_dir = "./out"
 
-def generate_response(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "This GPT helps explain complex and abstract concepts by generating illustrative Python code using the Manim animation library. It breaks down big ideas into visual, understandable components through Manim animations, leveraging examples to teach effectively. The GPT produces code that can be run directly in a Manim environment (the class name should always be MyScene), guiding users through the logic and steps involved in each animation. Before writing any code, it clearly lists out the steps it will take to create the animation, ensuring the plan is understandable and logically sequenced. It assumes familiarity with Python but explains Manim-specific syntax and choices as needed. If a concept is too broad, it narrows the scope through clarification or proposes examples that illustrate key parts. It ensures that animations include plenty of motion and transitions to enhance visual engagement. The animation resolution is set for vertical short-form content with height of 1280 and width of 720. The GPT always provides the complete code at the end of the explanation, and all code blocks are wrapped in triple backticks (```), using proper syntax highlighting for Python. It avoids going off-topic or generating content not related to visual explanation or Manim code. The GPT aims to be clear, instructive, and efficient in converting concepts into animated visuals."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return (response['choices'][0]['message']['content'])
+# def generate_response(prompt):
+#     response = openai.ChatCompletion.create(
+#         model="gpt-4o",
+#         messages=[
+#             {"role": "system", "content": "This GPT helps explain complex and abstract concepts by generating illustrative Python code using the Manim animation library. It breaks down big ideas into visual, understandable components through Manim animations, leveraging examples to teach effectively. The GPT produces code that can be run directly in a Manim environment (the class name should always be MyScene), guiding users through the logic and steps involved in each animation. Before writing any code, it clearly lists out the steps it will take to create the animation, ensuring the plan is understandable and logically sequenced. It assumes familiarity with Python but explains Manim-specific syntax and choices as needed. If a concept is too broad, it narrows the scope through clarification or proposes examples that illustrate key parts. It ensures that animations include plenty of motion and transitions to enhance visual engagement. The animation resolution is set for vertical short-form content with height of 1280 and width of 720. The GPT always provides the complete code at the end of the explanation, and all code blocks are wrapped in triple backticks (```), using proper syntax highlighting for Python. It avoids going off-topic or generating content not related to visual explanation or Manim code. The GPT aims to be clear, instructive, and efficient in converting concepts into animated visuals."},
+#             {"role": "user", "content": prompt}
+#         ]
+#     )
+#     return (response['choices'][0]['message']['content'])
 
 app = Flask(__name__)
 CORS(app, origins=["https://tidal-2025.pages.dev"])
@@ -47,38 +52,48 @@ def after_request(response):
 
 @app.route('/run', methods=['GET'])
 def run_code():
+    snippets = []
     prompt = request.args.get('prompt')
     if not prompt:
         return jsonify({"error": "Prompt parameter is missing."}), 400
 
-    res = generate_response(prompt)
-    pattern = r'```(?:python)?\s*(.*?)```'
-    match = re.search(pattern, res, re.DOTALL)
+    res = generate_steps(prompt)
+    steps = res.split("---")
+    for step in steps:
+        code = generate_code(step)
+        with open("out.txt", "a") as f:
+            f.write(code + "\n---\n")   
+        pattern = r'```(?:python)?\s*(.*?)```'
+        match = re.search(pattern, code, re.DOTALL)
     
-    # Extract code from the response.
-    if match:
-        code = match.group(1)
-    else:
-        code = "Error: No code found in the response."
+        # Extract code from the response.
+        if match:
+            code = match.group(1)
+        else:
+            code = "Error: No code found in the response."
+
+        snippets.append(code)
+    
+    combined = generate_combined("\n---\n".join(snippets))
 
     # Execute the extracted code in the same scope.
     try:
         global_namespace = {}
-        exec(code, global_namespace)
+        exec(combined, global_namespace)
         global_namespace["MyScene"]().render()
     except Exception as e:
         return jsonify({"error": f"Something broke: {e}"}), 500
 
+    video_files = glob.glob("./out/videos/**/MyScene.mp4", recursive=True)
+    if not video_files:
+        return jsonify({"error": "No video files found."}), 500
+
     # Specify the bucket name and the file to upload
     bucket_name = 'alpha-tidal-2025'
-    video_files = glob.glob("./out/videos/**/*.mp4", recursive=True)
-    if not video_files:
-        return jsonify({"error": "No .mp4 file found in the specified directory."}), 500
-    file_path = video_files[0]
-    object_name = file_path.split("/")[-1]
 
+    object_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".mp4"
     # Upload the file
-    with open(file_path, 'rb') as data:
+    with open(video_files[0], 'rb') as data:
         s3.upload_fileobj(data, bucket_name, object_name)
     # Generate a presigned URL for the uploaded file
     url = s3.generate_presigned_url(
@@ -107,5 +122,5 @@ def home():
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port)
