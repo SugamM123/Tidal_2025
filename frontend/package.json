@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
+    "@excalidraw/excalidraw": "^0.18.0",
     "@excalidraw/mermaid-to-excalidraw": "^1.1.2",
     "@google/generative-ai": "^0.24.0",
     "auth0-js": "^9.28.0",
