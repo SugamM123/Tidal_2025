@@ -7,8 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://tidal-2025.onrender.com',
-        changeOrigin: true
+        target: 'https://alphaapi.shlokbhakta.dev',
+        // target: 'http://127.0.0.1:5001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }

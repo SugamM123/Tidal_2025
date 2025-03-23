@@ -2,18 +2,33 @@ import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from '../services/geminiService';
 import { useAuth0 } from '@auth0/auth0-react';
 import ReactMarkdown from 'react-markdown';
+import MediaViewer from './MediaViewer';
+import MediaGallery, { MediaItem } from './MediaGallery';
 
 interface Message {
   id: number;
   text: string;
-  isUser: boolean;
+  sender: 'user' | 'bot';
+  video?: string;
+  videoList?: { key: string; size: number; last_modified: string; url: string }[];
 }
+
+interface Video {
+  key: string;
+  size: number;
+  last_modified: string;
+  url: string;
+}
+
+const API_BASE_URL = 'https://alphaapi.shlokbhakta.dev';
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
 
@@ -27,7 +42,7 @@ const ChatInterface: React.FC = () => {
     const initialGreeting = {
       id: 0,
       text: "Hi! I'm Alpha Assistant. How can I help you today?",
-      isUser: false,
+      sender: 'bot',
     };
     
     setMessages([initialGreeting]);
@@ -35,9 +50,8 @@ const ChatInterface: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setDebugInfo(null); // Clear previous debug info
-    
     if (!input.trim()) return;
+    setDebugInfo(null);
 
     // If user is not authenticated, prompt login
     if (!isAuthenticated) {
@@ -48,42 +62,97 @@ const ChatInterface: React.FC = () => {
       return;
     }
 
-    const userMessage = { id: messages.length, text: input, isUser: true };
-    setMessages((prev) => [...prev, userMessage]);
-    const userInput = input; // Store input before clearing
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now(),
+      text: input,
+      sender: 'user',
+    };
+    setMessages(prev => [...prev, userMessage]);
+    const userInput = input;
     setInput('');
     setIsLoading(true);
+    setVideoUrl(null);
 
     try {
-      // Simple message for testing
-
-      // Send message to Gemini API with timeout handling
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out')), 30000); // 30 second timeout
-      });
-      
-      console.log("Sending message to Gemini API:", userInput);
-      const responsePromise = geminiService.sendMessage(userInput);
-      
-      // Use Promise.race to implement timeout
-      const response = await Promise.race([responsePromise, timeoutPromise]) as string;
-      console.log("Received response from Gemini API:", response);
-      
-      // Add AI response to messages
-      setMessages((prev) => [
-        ...prev,
-        { id: prev.length, text: response || "I received your message but couldn't generate a response. Please try again.", isUser: false },
-      ]);
+      // Check if user wants to list videos
+      if (input.toLowerCase().includes('list videos')) {
+        const response = await fetch(`${API_BASE_URL}/list_videos`);
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setVideoList(data.videos || []);
+        
+        const botResponse: Message = {
+          id: Date.now() + 1,
+          text: "Here are the available videos:",
+          sender: 'bot',
+          videoList: data.videos || [],
+        };
+        
+        setMessages(prev => [...prev, botResponse]);
+      } else {
+        // Check if it's a video generation request
+        if (input.toLowerCase().includes('generate') || input.toLowerCase().includes('create video')) {
+          const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(input)}`);
+          
+          if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          setVideoUrl(data.video_url);
+          
+          const botResponse: Message = {
+            id: Date.now() + 1,
+            text: "Here's a visualization of your request:",
+            sender: 'bot',
+            video: data.video_url
+          };
+          
+          setMessages(prev => [...prev, botResponse]);
+        } else {
+          // Handle regular chat message with Gemini
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Request timed out')), 30000);
+          });
+          
+          console.log("Sending message to Gemini API:", userInput);
+          const responsePromise = geminiService.sendMessage(userInput);
+          
+          const response = await Promise.race([responsePromise, timeoutPromise]) as string;
+          console.log("Received response from Gemini API:", response);
+          
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              text: response || "I received your message but couldn't generate a response. Please try again.",
+              sender: 'bot',
+            },
+          ]);
+        }
+      }
     } catch (error) {
       console.error('Error getting response:', error);
       let errorMessage = 'Sorry, I encountered an error processing your request.';
       
-      // Enhanced error handling with debugging info
       if (error instanceof Error) {
-        // Set debug info for troubleshooting
         setDebugInfo(`Error: ${error.message}\n${error.stack || ''}`);
         
-        // Add more specific error message based on the type of error
         if (error.message.includes('timed out')) {
           errorMessage = 'The request took too long to process. Please try again with a shorter message.';
         } else if (error.message.includes('API key')) {
@@ -95,12 +164,12 @@ const ChatInterface: React.FC = () => {
         }
       }
       
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
         {
-          id: prev.length,
+          id: Date.now() + 1,
           text: errorMessage,
-          isUser: false,
+          sender: 'bot',
         },
       ]);
     } finally {
@@ -109,22 +178,21 @@ const ChatInterface: React.FC = () => {
   };
 
   const handleNewConversation = () => {
-    // Reset the conversation in the Gemini service
     const success = geminiService.resetConversation();
     
-    // Clear all messages and add the greeting
     setMessages([
       {
         id: 0,
         text: success 
           ? "Hi! I'm Alpha Assistant. How can I help you today?" 
           : "Hi! I'm Alpha Assistant. Note: There was an issue resetting the conversation history.",
-        isUser: false,
+        sender: 'bot',
       },
     ]);
     
-    // Clear debug info
     setDebugInfo(null);
+    setVideoUrl(null);
+    setVideoList([]);
   };
 
   return (
@@ -134,6 +202,15 @@ const ChatInterface: React.FC = () => {
           <h2 className="text-xl font-semibold">Chat</h2>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={async () => { 
+              setInput('list videos'); 
+              handleSubmit(new Event('submit') as React.FormEvent); 
+            }}
+            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
+          >
+            <i className="fas fa-video mr-2"></i>List Videos
+          </button>
           {debugInfo && (
             <button
               onClick={() => setDebugInfo(null)}
@@ -153,21 +230,21 @@ const ChatInterface: React.FC = () => {
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
+        {messages.map(message => (
           <div
             key={message.id}
             className={`flex ${
-              message.isUser ? 'justify-end' : 'justify-start'
+              message.sender === 'user' ? 'justify-end' : 'justify-start'
             }`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-lg ${
-                message.isUser
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.sender === 'user'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-[#2a2a2a] text-gray-100'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
               }`}
             >
-              {message.isUser ? (
+              {message.sender === 'user' ? (
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
                 <div className="markdown-content">
@@ -194,28 +271,71 @@ const ChatInterface: React.FC = () => {
                   >
                     {message.text}
                   </ReactMarkdown>
+                  
+                  {message.video && (
+                    <div className="mt-3">
+                      <MediaViewer
+                        type="video"
+                        src={message.video}
+                        interactive={true}
+                        width="100%"
+                      />
+                    </div>
+                  )}
+                  
+                  {message.videoList && message.videoList.length > 0 && (
+                    <div className="mt-3">
+                      <MediaGallery
+                        items={message.videoList.map(video => ({
+                          id: video.key,
+                          type: 'video',
+                          src: video.url,
+                          title: video.key,
+                          size: video.size,
+                          lastModified: video.last_modified
+                        }))}
+                        layout="list"
+                      />
+                    </div>
+                  )}
+                  
+                  {message.videoList && message.videoList.length === 0 && (
+                    <div className="mt-3 text-sm text-gray-300">
+                      No videos found in storage.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         ))}
+        
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] p-3 rounded-lg bg-[#2a2a2a] text-gray-100">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+          <div className="flex justify-center">
+            <div className="bg-gray-700 text-white rounded-lg p-3">
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>
+                  {input.toLowerCase().includes('list videos') 
+                    ? 'Fetching videos...' 
+                    : input.toLowerCase().includes('generate') || input.toLowerCase().includes('create video')
+                      ? 'Generating animation...'
+                      : 'Thinking...'}
+                </span>
               </div>
             </div>
           </div>
         )}
+        
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-800 text-red-300 rounded-lg text-xs overflow-x-auto">
             <pre>{debugInfo}</pre>
           </div>
         )}
-        <div ref={messagesEndRef}></div>
+        <div ref={messagesEndRef} />
       </div>
       
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
@@ -224,16 +344,22 @@ const ChatInterface: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-[#2a2a2a] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask Alpha anything you'd like to know or learn about!"
+            className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask me anything or type 'generate' to create a visualization!"
             disabled={isLoading}
           />
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!input.trim() || isLoading}
+            className={`px-4 py-2 rounded-lg text-white ${
+              isLoading || !input.trim()
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90'
+            }`}
+            disabled={isLoading || !input.trim()}
           >
-            <i className="fas fa-paper-plane"></i>
+            {isLoading 
+              ? <i className="fas fa-circle-notch fa-spin"></i> 
+              : <i className="fas fa-paper-plane"></i>}
           </button>
         </div>
       </form>
@@ -241,4 +367,4 @@ const ChatInterface: React.FC = () => {
   );
 };
 
-export default ChatInterface; 
+export default ChatInterface;
