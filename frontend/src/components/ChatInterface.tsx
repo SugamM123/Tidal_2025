@@ -4,6 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import ReactMarkdown from 'react-markdown';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
+import DrawingBoard from './DrawingBoard';
 
 interface Message {
   id: number;
@@ -31,6 +32,7 @@ const ChatInterface: React.FC = () => {
   const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -226,6 +228,12 @@ const ChatInterface: React.FC = () => {
           >
             New Conversation
           </button>
+          <button
+            onClick={() => setShowDrawingBoard(prev => !prev)}
+            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
+          >
+            <i className="fas fa-pencil-alt mr-2"></i>Drawing Board
+          </button>
         </div>
       </div>
       
@@ -363,6 +371,12 @@ const ChatInterface: React.FC = () => {
           </button>
         </div>
       </form>
+      
+      {showDrawingBoard && (
+        <div className="mb-4">
+          <DrawingBoard height="400px" />
+        </div>
+      )}
     </div>
   );
 };
