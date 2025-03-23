@@ -8,6 +8,9 @@ from flask_cors import CORS
 import boto3
 import glob
 import shutil
+from system import gen_steps, gen_code
+from debug import debug_code
+import traceback
 
 dotenv.load_dotenv()
 openai.api_key = os.getenv("OPEN_AI_API")
@@ -24,16 +27,25 @@ s3 = session.client('s3')
 
 config.media_dir = "./out"
 
-def generate_response(prompt):
+def generate_steps(prompt):
     response = openai.ChatCompletion.create(
-        model="gpt-4o",
+        model="o3-mini",
         messages=[
-            {"role": "system", "content": "This GPT helps explain complex and abstract concepts by generating illustrative Python code using the Manim animation library. It breaks down big ideas into visual, understandable components through Manim animations, leveraging examples to teach effectively. The GPT produces code that can be run directly in a Manim environment (the class name should always be MyScene), guiding users through the logic and steps involved in each animation. Before writing any code, it clearly lists out the steps it will take to create the animation, ensuring the plan is understandable and logically sequenced. It assumes familiarity with Python but explains Manim-specific syntax and choices as needed. If a concept is too broad, it narrows the scope through clarification or proposes examples that illustrate key parts. It ensures that animations include plenty of motion and transitions to enhance visual engagement. The animation resolution is set for vertical short-form content with height of 1280 and width of 720. The GPT always provides the complete code at the end of the explanation, and all code blocks are wrapped in triple backticks (```), using proper syntax highlighting for Python. It avoids going off-topic or generating content not related to visual explanation or Manim code. The GPT aims to be clear, instructive, and efficient in converting concepts into animated visuals."},
+            {"role": "system", "content": gen_steps},
             {"role": "user", "content": prompt}
         ]
     )
     return (response['choices'][0]['message']['content'])
 
+def generate_code(steps):
+    response = openai.ChatCompletion.create(
+        model="o3-mini",
+        messages=[
+            {"role": "system", "content": gen_code},
+            {"role": "user", "content": steps}
+        ]
+    )
+    return (response['choices'][0]['message']['content'])
 app = Flask(__name__)
 # Update to allow localhost during development
 CORS(app, origins=["https://tidal-2025.pages.dev"])
@@ -52,9 +64,16 @@ def run_code():
     if not prompt:
         return jsonify({"error": "Prompt parameter is missing."}), 400
 
-    res = generate_response(prompt)
+    print('generating steps')
+    steps = generate_steps(prompt)
+    with open('steps.txt', 'w') as f:
+        f.write(steps)
+    print('generating code')
+    code = generate_code(steps)
+    with open('code.txt', 'w') as f:
+        f.write(code)
     pattern = r'```(?:python)?\s*(.*?)```'
-    match = re.search(pattern, res, re.DOTALL)
+    match = re.search(pattern, code, re.DOTALL)
     
     # Extract code from the response.
     if match:
@@ -62,13 +81,24 @@ def run_code():
     else:
         code = "Error: No code found in the response."
 
-    # Execute the extracted code in the same scope.
-    try:
-        global_namespace = {}
-        exec(code, global_namespace)
-        global_namespace["MyScene"]().render()
-    except Exception as e:
-        return jsonify({"error": f"Something broke: {e}"}), 500
+    print('Executing code')
+    succeeded = False
+    for attempt in range(4):
+        try:
+            global_namespace = {}
+            exec(code, global_namespace)
+            global_namespace["MyScene"]().render()
+            succeeded = True  # mark that the execution succeeded
+            break
+        except Exception as e:
+            error_traceback = traceback.format_exc()
+            print(error_traceback)
+            print(f"Error {attempt+1}: attempting to debug the code...")
+            code = debug_code(code, error_traceback)
+
+    if not succeeded:
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": "error"}), 500
 
     # Specify the bucket name and the file to upload
     bucket_name = 'alpha-tidal-2025'
@@ -147,5 +177,5 @@ def list_videos():
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 1000))
     app.run(host="0.0.0.0", port=port)

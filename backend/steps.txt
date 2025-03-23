@@ -1,0 +1,65 @@
+Step 1 (Setup Function Graph)
+--------------------------------
+Screen Resolution: 1920x1080
+Visual Elements:
+• Axes: A horizontal line across the center (from left edge at (–960, 0) to right edge at (960, 0)) and a vertical line through the center (from bottom at (0, –540) to top at (0, 540)); color white, thickness 2, z-order = 0.
+• Function Graph (f(x) = sin x): A smooth blue curve plotted for x-values scaled from –8 to 8 (mapped onto the screen with center at (0, 0)); use a coordinate transform so that x = –8 maps to (–800, 0) and x = 8 maps to (800, 0); the curve is drawn with a stroke width of 4, z-order = 1.
+Animation Instructions:
+• The axes fade in over 1 second.
+• The sin x graph is drawn along its path over 2 seconds using a “Create” animation.
+Persistence:
+• Both axes and function graph persist for subsequent steps.
+Explanation:
+This step establishes the Cartesian coordinate system centered on the 1920×1080 frame and plots the essential function f(x) = sin x. The graph serves as the base upon which Taylor approximations will be overlaid.
+
+---
+Step 2 (Introduce Expansion Point and Linear Approximation)
+--------------------------------
+Screen Resolution: 1920x1080
+Visual Elements:
+• Axes: Same as in Step 1 (centered horizontal and vertical white lines; z-order = 0).
+• Function Graph (f(x) = sin x): Blue sin x curve from –8 to 8 as defined before; z-order = 1.
+• Expansion Point: A small red dot placed at the point corresponding to x = 0 on the sine graph (located at (0, 0) in the center of the screen); radius 8 pixels, z-order = 2.
+• Tangent Line (Linear Taylor Approximation at 0): A green straight line representing the tangent at x = 0. Since f(0)=0 and f '(0)=cos 0=1, the line is y = x. Draw the segment from (–600, –600) to (600, 600) so it is visible near the center; stroke width 3, z-order = 1.
+Animation Instructions:
+• The expansion point (red dot) appears with a FadeIn animation over 0.5 seconds.
+• The tangent line is drawn using a “Create” animation over 1.5 seconds.
+Persistence:
+• All elements (axes, function graph, expansion point, tangent line) persist for continued context.
+Explanation:
+This step highlights the expansion point x = 0 on the sine curve and overlays the tangent line, which is the first-order (linear) Taylor approximation of sin x around 0. It visually emphasizes how the linear term approximates the function near that point.
+
+---
+Step 3 (Display Third-Order Taylor Polynomial Approximation)
+--------------------------------
+Screen Resolution: 1920x1080
+Visual Elements:
+• Axes: As before; white lines centered on the screen; z-order = 0.
+• Function Graph (f(x) = sin x): Blue curve from -8 to 8; z-order = 1.
+• Expansion Point: Red dot at (0, 0); z-order = 2.
+• Third-Order Taylor Approximation Graph: A magenta curve representing the third-order Taylor series for sin x around 0, given by P₃(x) = x – x³/6. Plot this curve over the same x-range (–8 to 8) with appropriate scaling. Style the curve with a dashed stroke pattern, stroke width 4, z-order = 2.
+Animation Instructions:
+• The magenta polynomial curve is drawn with a “Create” animation over 2 seconds.
+• Use a ReplacementTransform to subtly transform the previously drawn tangent line (from Step 2) into a thinner, dotted version in the background (fade to a lower opacity) to indicate it’s an earlier, simpler approximation; animation duration 1 second.
+Persistence:
+• Axes, function graph, expansion point, and the new third-order Taylor approximation graph persist.
+Explanation:
+In this step, the third-order approximation P₃(x) = x – x³/6 is introduced as a more refined Taylor series approximation. The new curve (in magenta and styled with dashes) better adheres to the curvature of f(x) = sin x around x = 0, illustrating how adding higher-order terms improves the fit.
+
+---
+Step 4 (Introduce Fifth-Order Taylor Polynomial and Comparative Overlay)
+--------------------------------
+Screen Resolution: 1920x1080
+Visual Elements:
+• Axes: Identical white centered axes; z-order = 0.
+• Function Graph (f(x) = sin x): Blue sin x curve; z-order = 1.
+• Expansion Point: Red dot at (0, 0); z-order = 2.
+• Third-Order Taylor Approximation Graph: Magenta dashed curve representing P₃(x) = x – x³/6; z-order = 2.
+• Fifth-Order Taylor Approximation Graph: An orange curve representing the fifth-order Taylor series for sin x around 0, given by P₅(x) = x – x³/6 + x⁵/120. Plot this curve over x from –8 to 8 with a solid line style, stroke width 4, z-order = 3.
+Animation Instructions:
+• The orange fifth-order curve is drawn with a “Create” animation over 2 seconds.
+• Then, using a Transform animation (over 1.5 seconds), smoothly morph the magenta third-order curve into a lighter, semi-transparent version while the orange curve becomes highlighted. This emphasizes the improvement from the lower order to the higher order Taylor approximation.
+Persistence:
+• All elements remain visible for a final comparative view.
+Explanation:
+This final step overlays the fifth-order Taylor series approximation, which more closely follows sin x over a broader interval. The animation contrasts the previous lower-order approximations against the higher-order one to visually communicate how including more terms in a Taylor series leads to better approximations of the function over a wider range around the expansion point.
