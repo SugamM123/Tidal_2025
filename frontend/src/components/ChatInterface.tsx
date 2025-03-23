@@ -471,7 +471,19 @@ const ChatInterface: React.FC = () => {
       />
       
       {/* Excalidraw Modal */}
+    <style>
+      /* Make all mermaid text elements black */
+      .nodeLabel,
+      .edgeLabel,
+      .messageText,
+      .taskText,
+      .sectionTitle,
+      .mermaid * {
+        color: black !important;
+      }
+    </style>
     </div>
+
   );
 };
 
