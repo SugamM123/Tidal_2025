@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import NotesPanel from './NotesPanel';
 
 const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
   return (
@@ -54,19 +55,7 @@ const Sidebar: React.FC<{ position: 'left' | 'right' }> = ({ position }) => {
           </div>
         </>
       ) : (
-        <>
-          <div className="text-white">
-            <div className="flex justify-between items-center mb-4">
-              <h3>Notes</h3>
-              <button className="text-gray-400 hover:text-white">
-                <i className="fas fa-ellipsis-h"></i>
-              </button>
-            </div>
-            <button className="w-full py-2 px-4 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700">
-              + Add note
-            </button>
-          </div>
-        </>
+        <NotesPanel />
       )}
     </div>
   );

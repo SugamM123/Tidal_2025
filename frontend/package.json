@@ -14,6 +14,8 @@
     "@google/generative-ai": "^0.24.0",
     "auth0-js": "^9.28.0",
     "desmos": "^1.5.4",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.0.375",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
