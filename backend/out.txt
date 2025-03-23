@@ -2,247 +2,229 @@ from manim import *
 
 class MyScene(Scene):
     def construct(self):
-        # Step 1: Setting up the coordinate axes and title
+        # Define the axes
         axes = Axes(
-            x_range=[-8, 8, 1],
-            y_range=[-2.5, 2.5, 1],
-            axis_config={"include_numbers": False, "include_ticks": False}
-        ).move_to(ORIGIN)  # Centering the axes
-        
-        title = Tex(
-            "Fourier Series: Building a Square Wave",
-            font_size=48
-        ).to_edge(UP) # Placing the title at the top center
-
-        self.add(axes, title)
-        
-        # Explanation text (not displayed in the animation)
-        explanation = Tex(r"We begin by setting up the coordinate axes and title.",
-        r" In a Fourier series, we create a square wave by summing sine waves of different",
-        r" frequencies and amplitudes. This scene introduces the base layout.",font_size=30)
-        explanation.to_corner(DL)
-        self.wait(1) # Add a wait to show setup, but don't play the explanation, to save space
-
-        # Comment explaining the scene components
-        # - axes: Coordinate axes spanning x from -8 to 8 and y from -2.5 to 2.5.
-        # - title: Title text positioned at the top center of the screen.
-
----
-from manim import *
-
-class MyScene(Scene):
-    def construct(self):
-        # Screen Resolution and Axes
-        axes = Axes(
-            x_range=[-8, 8, 1],
-            y_range=[-2.5, 2.5, 1],
-            axis_config={"color": BLUE},
-        )
-        axes.center()
-
-        # Square Wave Function Definition
-        def square_wave(x):
-            """
-            Defines a piecewise square wave function.
-            Equals 1 for x from -pi to pi, and -1 for the remaining segments.
-            Extends this periodically to at least one period left and right.
-            """
-            period = 2 * PI
-            x_modified = x % period  # Normalize x to be within one period [0, 2*pi]
-
-            if -PI <= x_modified <= PI:
-                return 1
-            else:
-                return -1
-
-        # Plot the target square wave function in bold red line
-        square_wave_graph = axes.plot(
-            square_wave,
-            x_range=[-3 * PI, 3 * PI, 0.01],  # Extended periodically
-            color=RED,
-            stroke_width=3, # Make the line bold
+            x_range=[-3, 3, 1],
+            y_range=[0, 8, 1],
+            axis_config={"stroke_color": BLACK, "stroke_width": 1}
         ).move_to(ORIGIN)
+        
+        # Define the function graph
+        exp_func = lambda x: np.exp(x)
+        expGraph = axes.plot(
+            exp_func,
+            x_range=[-2, 2],
+            color=BLUE
+        )
 
-        # Add an on-screen caption below the square wave
-        caption = Tex("Target Square Wave").next_to(square_wave_graph, DOWN, buff=0.5)
-
-        # Add all elements to the scene
-        self.add(axes, square_wave_graph, caption)
-
-        # Explanation: "Here we display the target square wave. Our goal is to approximate this waveform by summing sine waves using the Fourier series."
-        explanation = Text(
-            "Here we display the target square wave. Our goal is to approximate this waveform by summing sine waves using the Fourier series.",
-            font_size=24
-        ).to_edge(DOWN)
-
-        self.wait(1) # Short delay before showing the explanation
-        self.play(Write(explanation), run_time=3)
-        self.wait(2)
-
----
-from manim import *
-
-class MyScene(Scene):
-    def construct(self):
-        # Screen Resolution
-        screen_width = 1920
-        screen_height = 1080
-
-        # Coordinate axes
-        axes = Axes(
-            x_range=[-PI, PI, PI / 2],
-            y_range=[-1.2, 1.2, 0.5],
-            x_length=12,
-            y_length=6,
-            axis_config={"tip_shape": StealthTip},
-        ).add_coordinates()
+        # Animate the creation of the axes
         self.play(Create(axes), run_time=2)
 
-        # Sine wave plot
-        sine_wave = axes.plot(
-            lambda x: np.sin(x),
-            x_range=[-PI, PI],
-            color=BLUE,
-            stroke_width=3  # Slightly thicker for clarity
-        )
-        self.play(Create(sine_wave), run_time=2)
+        # Animate the drawing of the exponential graph
+        self.play(Write(expGraph), run_time=3)
 
-        # Sine wave label
-        sine_label = MathTex(r"\text{Fundamental: } \sin(x)", color=BLUE)
-        sine_label.next_to(sine_wave, UP, buff=0.1)
-        self.play(Write(sine_label), run_time=1)
-
-        # Explanation text
-        explanation_text = Text(
-            "We start with the fundamental sine wave. In the Fourier series for a square wave, the first term is sin(x), which provides the basic oscillatory behavior but does not match the square shape.",
-            color=WHITE,
-            font_size=24,
-            ).to_edge(DOWN, buff=0.5)
-
-        self.play(Write(explanation_text), run_time=3)
-
-        self.wait(2)
+        # Keep axes and graph on the screen
+        self.axes = axes
+        self.expGraph = expGraph
 
 ---
 from manim import *
 
 class MyScene(Scene):
     def construct(self):
-        # Screen Resolution
-        config.pixel_width = 1920
-        config.pixel_height = 1080
-
-        # Coordinate Axes
+        # Step 1 Elements (Persisting from the previous step)
         axes = Axes(
-            x_range=[-PI, PI, PI / 4],
-            y_range=[-1.5, 1.5, 0.5],
-            axis_config={"color": WHITE, "stroke_width": 2},
-            x_axis_config={"numbers_to_include": [-PI, -PI / 2, 0, PI / 2, PI]},
-            y_axis_config={"numbers_to_include": [-1.5, -1, -0.5, 0, 0.5, 1, 1.5]}
-        )
-        x_label = axes.get_x_axis_label("$x$")
-        y_label = axes.get_y_axis_label("y")
-        axes_group = VGroup(axes, x_label, y_label)
-        self.play(Create(axes_group), run_time=2)
+            x_range=[-5, 5, 1],
+            y_range=[0, 8, 1],
+            axis_config={"include_numbers": True},
+            x_axis_config={"numbers_to_exclude": [0]},  # Ensure 0 is excluded on x-axis
+        ).move_to(ORIGIN)
 
-        # Fundamental Sine Wave
-        fundamental = axes.plot(
-            lambda x: np.sin(x), 
-            x_range=[-PI, PI], 
+        exp_func = lambda x: np.exp(x)
+        expGraph = axes.plot(
+            exp_func,
+            x_range=[-5, 5],
             color=BLUE,
-            stroke_width=3
+            stroke_width=3,
         )
-        fundamental_label = Tex("sin(x)", color=BLUE).next_to(fundamental, RIGHT)
-        self.play(Create(fundamental), Write(fundamental_label), run_time=2)
 
-        # Third Harmonic Sine Wave
-        third_harmonic = axes.plot(
-            lambda x: (1/3) * np.sin(3*x), 
-            x_range=[-PI, PI], 
-            color=GREEN,
-            stroke_width=3
-        )
-        third_harmonic_label = Tex("(1/3)sin(3x)", color=GREEN).next_to(third_harmonic, RIGHT)
-        self.play(Create(third_harmonic), Write(third_harmonic_label), run_time=2)
+        # Step 2 Elements
+        baseDot = Dot(axes.coords_to_point(0, exp_func(0)), color=RED)  # Red dot at (0, 1)
+        baseLine = DashedLine(
+            start=axes.coords_to_point(0, 0),
+            end=axes.coords_to_point(0, 8),
+            color=GRAY,
+            stroke_width=2,
+        )  # Dashed line at x = 0
 
-        # Sum of Two Waves
-        sum_wave = axes.plot(
-            lambda x: np.sin(x) + (1/3) * np.sin(3*x),
-            x_range=[-PI, PI],
-            color=PURPLE,
-            stroke_width=5
-        )
-        sum_wave_label = Tex("Partial Sum", color=PURPLE).next_to(sum_wave, RIGHT)
-        self.play(Create(sum_wave), Write(sum_wave_label), run_time=2)
+        # Animations
+        self.play(Create(baseDot), run_time=1.5)  # Draw baseDot
+        self.play(Create(baseLine), run_time=1.5)  # Draw baseLine
 
-        # Explanation
-        explanation = Text("We now add the third harmonic with the appropriate amplitude scaling.", font_size=24)
-        explanation.to_edge(DOWN)
-        explanation2 = Text("The blue and green curves represent individual sine waves, and their sum, shown in purple, begins to", font_size=24)
-        explanation2.next_to(explanation, UP)
-        explanation3 = Text("approximate the square wave shape more closely.", font_size=24)
-        explanation3.next_to(explanation2, UP)
-        self.play(Write(explanation), Write(explanation2), Write(explanation3), run_time=4)
-
-        self.wait(3)
+        # Keep all elements on screen for the next scene
+        self.embed()
 
 ---
 from manim import *
 
 class MyScene(Scene):
     def construct(self):
-        # Screen Resolution: 1920x1080 (implicitly set via config)
-
-        # Redraw coordinate axes
+        # Recreate Axes
         axes = Axes(
-            x_range=[0, 10, 1],
-            y_range=[-1.5, 1.5, 0.5],
-            x_axis_config={"numbers_to_include": np.arange(0, 10, 1)},
-            y_axis_config={"numbers_to_include": np.arange(-1.5, 1.5, 0.5)},
+            x_range=[-5, 5, 1],
+            y_range=[-1, 5, 1],
+            axis_config={"include_numbers": True, "numbers_to_exclude": [0]},
+            x_axis_config={"numbers_to_include": [-3,3]},
             tips=False,
-        ).add_coordinates()
-        self.play(Create(axes), run_time=1)
+        )
+        self.add(axes)
 
-        # Define sine wave functions
-        fundamental = axes.plot(lambda x: np.sin(x), color=BLUE, stroke_width=2,  x_range=[0, 10])
-        third_harmonic = axes.plot(lambda x: (1/3)*np.sin(3*x), color=GREEN, stroke_width=2, x_range=[0, 10])
-        fifth_harmonic = axes.plot(lambda x: (1/5)*np.sin(5*x), color=ORANGE, stroke_width=2, x_range=[0, 10])
-        seventh_harmonic = axes.plot(lambda x: (1/7)*np.sin(7*x), color=MAGENTA, stroke_width=2, x_range=[0, 10])
+        # Recreate expGraph
+        expGraph = axes.plot(
+            lambda x: np.exp(x),
+            x_range=[-5, 5],
+            color=BLUE,
+            stroke_width=3,
+        )
+        self.add(expGraph)
 
-        # Define composite curve function
-        composite_func = lambda x: np.sin(x) + (1/3)*np.sin(3*x) + (1/5)*np.sin(5*x) + (1/7)*np.sin(7*x)
-        composite_curve = axes.plot(composite_func, color=BLACK, stroke_width=4, x_range=[0, 10])
+        # Recreate baseDot
+        baseDot = Dot(axes.coords_to_point(0, 1), color=RED, radius=0.1)
+        self.add(baseDot)
 
-        # Plot sine waves
-        self.play(Create(fundamental), run_time=1)
-        self.play(Create(third_harmonic), run_time=1)
-        self.play(Create(fifth_harmonic), run_time=1)
-        self.play(Create(seventh_harmonic), run_time=1)
+        # Recreate baseLine
+        baseLine = axes.get_vertical_line(
+            axes.coords_to_point(0, 1), color=YELLOW, stroke_width=2
+        )
+        self.add(baseLine)
 
-        # Plot composite curve
-        self.play(Create(composite_curve), run_time=1)
+        # Degree-0 Taylor Approximation (p0Line)
+        p0Line = Line(axes.coords_to_point(-3, 1), axes.coords_to_point(3, 1), color=GREEN)
+        p0Line.set_z_index(1)  # Ensure it's above the axes
 
-        # Place caption
-        caption = Tex("Fourier Approximation to Square Wave").scale(0.7).to_edge(DOWN)
-        self.play(Write(caption), run_time=1)
+        # Animation: FadeIn p0Line
+        self.play(FadeIn(p0Line), run_time=2)
 
-        # Explanation
-        explanation = [
-            "By layering additional odd harmonics—the 5th and 7th terms in this example—",
-            "the composite sum (black) more closely approximates the ideal square wave.",
-            "Each additional term refines the approximation, illustrating the power of",
-            "Fourier series in building complex signals from simple sine waves."
-        ]
-
-        full_explanation = ""
-        for line in explanation:
-            full_explanation += line + " "
-
-        explanation_text = Tex(full_explanation, font_size=24).to_edge(UL, buff = 0.5).scale(0.8)
-        self.play(Write(explanation_text), run_time=5)
-
-        self.wait(2)
+        # Keep all elements
+        self.wait(1)
 
 ---
-Error: No code found in the response.
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Constants for graph and axes
+        x_start = -5
+        x_end = 5
+        y_start = -1
+        y_end = 8
+        graph_color = BLUE
+        axes_labels = ["x", "y"]
+
+        # Define the exponential function
+        def exp_func(x):
+            return np.exp(x)
+
+        # Create and position the axes
+        axes = Axes(
+            x_range=[x_start, x_end, 1],
+            y_range=[y_start, y_end, 1],
+            axis_config={"include_numbers": True},
+            x_axis_config={"numbers_to_exclude": [0]},
+            y_axis_config={"numbers_to_exclude": [0]}
+        )
+        axes.add_coordinate_labels()
+        axes.x_axis.set_numbers_as_superscript()
+        axes.y_axis.set_numbers_as_superscript()
+
+        # Create exponential graph
+        expGraph = axes.plot(
+            exp_func,
+            x_range=[x_start, x_end],
+            color=graph_color
+        ).set_z_index(1)
+
+        # Base point and line for constant approximation
+        base_x = 0
+        base_y = exp_func(base_x)
+        baseDot = Dot(axes.coords_to_point(base_x, base_y), color=RED).set_z_index(2)
+        baseLine = DashedLine(
+            start=axes.coords_to_point(x_start, base_y),
+            end=axes.coords_to_point(x_end, base_y),
+            color=YELLOW
+        )
+
+        # Linear Taylor approximation graph (p1(x) = 1 + x)
+        def linear_approx(x):
+            return 1 + x
+        p1Graph = axes.plot(
+            linear_approx,
+            x_range=[-3, 3],
+            color=GREEN,
+            stroke_dasharray = [3,3]  # Make it dashed
+        )
+
+        # Animation
+        self.add(axes, expGraph, baseDot, baseLine)
+        self.wait(1)
+        self.play(ReplacementTransform(baseLine, p1Graph), run_time=2.5)
+        self.wait(1)
+
+        # Keep axes, expGraph, baseDot, baseLine, and p1Graph on the screen for the next scene
+        self.axes = axes
+        self.expGraph = expGraph
+        self.baseDot = baseDot
+        self.p1Graph = p1Graph
+
+---
+from manim import *
+
+class MyScene(Scene):
+    def construct(self):
+        # Constants for the scene
+        x_range = [-3, 5, 1]
+        y_range = [0, 20, 1]
+        axes_labels = {"x_label_decimal_places": 0, "y_label_decimal_places": 0}
+
+        # Define the exponential function
+        def exponential_function(x):
+            return np.exp(x)
+
+        # Define the degree-1 Taylor approximation function
+        def taylor_approximation_degree_1(x, expansion_point=0):
+            return 1 + x
+
+        # Define the degree-2 Taylor approximation function
+        def taylor_approximation_degree_2(x, expansion_point=0):
+            return 1 + x + (x**2)/2
+
+        # Create the axes
+        axes = Axes(x_range=x_range, y_range=y_range, axis_config=axes_labels)
+        axes.to_default_unit()
+        self.add(axes)
+
+        # Create the exponential function graph
+        expGraph = axes.plot(lambda x: exponential_function(x), x_range=x_range[:2], color=BLUE)
+        self.add(expGraph)
+
+        # Create the base point and line
+        baseDot = Dot(axes.coords_to_point(0, 1), color=GREEN)
+        self.add(baseDot)
+
+        baseLine = axes.get_vertical_line(axes.coords_to_point(0, 1), color=GREEN)
+        self.add(baseLine)
+
+        # Create the degree-1 Taylor approximation graph
+        p1Graph = axes.plot(taylor_approximation_degree_1, x_range=x_range[:2], color=RED)
+        self.add(p1Graph)
+
+        # Create the degree-2 Taylor approximation graph
+        p2Graph = axes.plot(taylor_approximation_degree_2, x_range=x_range[:2], color=PURPLE, stroke_dasharray=[5, 5])
+
+        # Morph from linear to quadratic approximation
+        self.play(ReplacementTransform(p1Graph, p2Graph), run_time=3)
+
+        # Keep the objects on screen
+        self.wait(1)
+
 ---

@@ -1,0 +1,63 @@
+Step 1 (Screen Resolution 1920x1080)
+Elements:
+ • Axes (Name: "axes") – A set of coordinate axes centered at the screen center, scaled so the x-domain covers approximately –3 to 3 and the y-domain covers 0 to 8. Axes are drawn in thin black lines.
+ • Function Graph (Name: "expGraph") – A blue continuous curve representing f(x) = eˣ for x in [–2, 2], plotted relative to the axes so that f(–2) ≈ 0.14 and f(2) ≈ 7.39.
+Animations:
+ • Use a Create animation (duration: 2 seconds) to draw "axes" from nothing at the center.
+ • Use a Draw/Write animation (duration: 3 seconds) to trace "expGraph" over the domain.
+Persistence: "axes" and "expGraph" remain on screen for subsequent steps.
+Explanation: This step sets up the coordinate system and displays the original function f(x)=eˣ. The graph provides context for comparing the Taylor series approximations that will be shown.
+
+---
+Step 2 (Screen Resolution 1920x1080)
+Elements:
+ • Axes (Recreated identically as in Step 1, centered; persists from previous state in concept).
+ • expGraph (Recreated identically as in Step 1).
+ • Expansion Point Marker (Name: "baseDot") – A red dot positioned at (0, e⁰) = (0, 1), placed exactly at the center horizontally and one unit above the horizontal axis.
+ • Expansion Line (Name: "baseLine") – A dashed vertical line (gray, 2-pixel width, dashed style) drawn from the bottom of the graph (approximate y = 0) to the top (approximate y = 8) at x = 0.
+Animations:
+ • Use Create (duration: 1.5 seconds) to draw "baseDot" at (0, 1).
+ • Use Create (duration: 1.5 seconds) to draw "baseLine" from (0, 0) to (0, 8).
+Persistence: "axes", "expGraph", "baseDot", and "baseLine" will persist for the next step.
+Explanation: This step highlights the expansion point for the Taylor series (x = 0) by marking it with a red dot, accompanied by a vertical dashed line. This visual cue indicates where the function’s derivatives are used to construct the Taylor approximations.
+
+---
+Step 3 (Screen Resolution 1920x1080)
+Elements:
+ • Axes (Recreated as before).
+ • expGraph (Recreated as before).
+ • baseDot (Recreated as before).
+ • baseLine (Recreated as before).
+ • Degree-0 Taylor Approximation (Name: "p0Line") – A horizontal green line drawn at y = 1 (constant function p₀(x) = 1) spanning the x-range from –3 to 3, ensuring it fits within the frame.
+Animations:
+ • Use FadeIn (duration: 2 seconds) to display "p0Line".
+Persistence: All elements remain, with "p0Line" persisting as the initial Taylor approximation.
+Explanation: This step introduces the simplest Taylor approximation—the constant term. The horizontal green line at y = 1 represents p₀(x) = f(0), showing that near the expansion point the function’s value is first approximated by its value at that point.
+
+---
+Step 4 (Screen Resolution 1920x1080)
+Elements:
+ • Axes (Recreated as before).
+ • expGraph (Recreated as before).
+ • baseDot (Recreated as before).
+ • baseLine (Recreated as before).
+ • Degree-1 Taylor Approximation (Name: "p1Graph") – A dashed green line representing the linear function p₁(x) = 1 + x over the x-range [–3, 3]. The line is drawn such that at x = 0 it intersects (0,1) (matching the base point) and has a slope of 1.
+Animations:
+ • Use ReplacementTransform on "p0Line" transforming it smoothly into "p1Graph" (duration: 2.5 seconds) to visually indicate the incremental improvement.
+Persistence: "axes", "expGraph", "baseDot", "baseLine", and "p1Graph" persist for the next step.
+Explanation: This step evolves the approximation by adding the linear term. The transformation from the constant approximation to the linear function p₁(x) = 1 + x emphasizes how the derivative at the expansion point contributes to a better local approximation.
+
+---
+Step 5 (Screen Resolution 1920x1080)
+Elements:
+ • Axes (Recreated as before).
+ • expGraph (Recreated as before).
+ • baseDot (Recreated as before).
+ • baseLine (Recreated as before).
+ • Degree-1 Taylor Approximation (Recreated as "p1Graph" for visual continuity).
+ • Degree-2 Taylor Approximation (Name: "p2Graph") – A dashed purple curve representing the quadratic function p₂(x) = 1 + x + (x²/2) over the x-range [–3, 3]. The curve is plotted to match exactly p₂ at the expansion point and its curvature matches the second derivative of eˣ.
+Animations:
+ • Use ReplacementTransform on "p1Graph" to smoothly morph it into "p2Graph" (duration: 3 seconds).
+Persistence: "axes", "expGraph", "baseDot", "baseLine", and "p2Graph" remain on screen.
+Explanation: In this final step the quadratic term is added to the series, improving the approximation further. The smooth transformation from the linear to the quadratic approximation visually demonstrates how additional terms in the Taylor series methodically improve the match to the function f(x)=eˣ around the expansion point.
+

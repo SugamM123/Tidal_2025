@@ -11,11 +11,11 @@ import shutil
 from get_steps import generate_steps
 from get_code import generate_code
 from get_combined import generate_combined
+from debug import debug_code
 from datetime import datetime
 from moviepy import *
 
 dotenv.load_dotenv()
-# openai.api_key = os.getenv("OPEN_AI_API")
 
 # Initialize a session using your credentials
 session = boto3.Session(
@@ -49,6 +49,8 @@ def run_code():
 
     print('Generating steps...')
     res = generate_steps(prompt, 'chatGPT')
+    with open('steps.txt', 'w', encoding='utf-8') as f:
+        f.write(res)
     print('Steps generated.')
 
     steps = res.split("---")
@@ -72,20 +74,31 @@ def run_code():
         snippets.append(code)
     
     print('Generating combined code...')
-    combined = generate_combined("\n---\n".join(snippets), 'gemini')
+    combined = generate_combined("\n---\n".join(snippets), 'chatGPT')
     print('Combined code generated.')
 
     with open("combined.py", "w", encoding='utf-8') as f:
         f.write(combined)
     # Execute the extracted code in the same scope.
-    try:
-        global_namespace = {}
-        exec(combined, global_namespace)
-        global_namespace["MyScene"]().render()
-    except Exception as e:
-        error_traceback = traceback.format_exc()
-        return jsonify({"error": str(e), "traceback": error_traceback}), 500
+    succeeded = False
+    for attempt in range(3):
+        try:
+            global_namespace = {}
+            exec(combined, global_namespace)
+            global_namespace["MyScene"]().render()
+            succeeded = True  # mark that the execution succeeded
+            break
+        except Exception as e:
+            error_traceback = traceback.format_exc()
+            print(error_traceback)
+            print(f"Error {attempt+1}: attempting to debug the code...")
+            combined = debug_code(combined, error_traceback)
 
+    if not succeeded:
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": "error"}), 500
+
+    
     video_files = glob.glob("./out/videos/**/MyScene.mp4", recursive=True)
     if not video_files:
         return jsonify({"error": "No video files found."}), 500
@@ -124,5 +137,5 @@ def home():
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 1000))
     app.run(host="0.0.0.0", port=port)

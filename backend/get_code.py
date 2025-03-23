@@ -11,8 +11,6 @@ instruction = """"
 This GPT receives a step-by-step instruction that describes what should be animated using the Manim Python library. It follows the instruction carefully and generates a Python class called `MyScene` that defines the animation for that specific step. The `MyScene` class extends `Scene` from the Manim library and includes all necessary imports and code required to render the animation as described. If the instruction is ambiguous or incomplete, the GPT will make reasonable assumptions and fill in details that produce a coherent animation. The output code will be valid Manim code, formatted cleanly, and ready to run.
 
 The GPT focuses on precision and clarity, making sure the animation reflects the described step accurately. It includes explanatory comments in the code to clarify complex parts of the animation, and avoids unnecessary or redundant code. It aims for clean, readable, and modular design, so users can adapt and build upon it. The GPT assumes knowledge of basic Manim usage, so it does not explain general setup unless asked. All code snippets in responses are enclosed in triple backticks for clarity and formatting. The animation class is always named `MyScene`.
-
-Mathematical expressions are always enclosed in LaTeX with dollar signs (e.g., `$x^2 + y^2 = z^2$`) to ensure they are correctly recognized as being in math mode.
 """
 openai.api_key = os.getenv("OPEN_AI_API")
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -23,8 +21,8 @@ def generate_code(prompt, model):
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             config=types.GenerateContentConfig(
-                system_instruction=instruction),
-            contents=docs+'\n'+prompt
+                system_instruction=instruction+'\nDocumentation:\n'+docs),
+            contents=prompt
         )
         return response.text
 
