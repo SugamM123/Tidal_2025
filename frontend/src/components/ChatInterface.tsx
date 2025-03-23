@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
 import DrawingBoard from './DrawingBoard';
+import { ExcalidrawElement } from "@excalidraw/excalidraw";
+import { excalidrawService } from './ExcalidrawService';
 
 interface Message {
   id: number;
@@ -33,6 +35,8 @@ const ChatInterface: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
   const [showDrawingBoard, setShowDrawingBoard] = useState(false);
+  const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
+  const [drawingPrompt, setDrawingPrompt] = useState('');
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -52,9 +56,22 @@ const ChatInterface: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    setDebugInfo(null);
-
+    if (!input.trim() || isLoading) return;
+    
+    const userMessage = input;
+    setInput('');
+    setIsLoading(true);
+    
+    // Add user message to chat
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        text: userMessage,
+        sender: 'user',
+      },
+    ]);
+    
     // If user is not authenticated, prompt login
     if (!isAuthenticated) {
       const shouldLogin = window.confirm('Please log in to use the chat. Would you like to log in now?');
@@ -64,47 +81,45 @@ const ChatInterface: React.FC = () => {
       return;
     }
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now(),
-      text: input,
-      sender: 'user',
-    };
-    setMessages(prev => [...prev, userMessage]);
-    const userInput = input;
-    setInput('');
-    setIsLoading(true);
-    setVideoUrl(null);
-
     try {
-      // Check if user wants to list videos
-      if (input.toLowerCase().includes('list videos')) {
-        const response = await fetch(`${API_BASE_URL}/list_videos`);
+      // Check if the user is asking for a drawing
+      const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
+      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      
+      if (isDrawingRequest) {
+        // Let the user know we're generating a diagram
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: "Generating a diagram based on your request...",
+            sender: 'bot',
+          },
+        ]);
         
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
+        // Generate the diagram
+        const diagramElements = await excalidrawService.generateDiagram(userMessage);
         
-        const data = await response.json();
+        // Update the state to hold the generated elements
+        setExcalidrawElements(diagramElements);
+        setDrawingPrompt(userMessage);
         
-        if (data.error) {
-          throw new Error(data.error);
-        }
+        // Show the drawing board
+        setShowDrawingBoard(true);
         
-        setVideoList(data.videos || []);
-        
-        const botResponse: Message = {
-          id: Date.now() + 1,
-          text: "Here are the available videos:",
-          sender: 'bot',
-          videoList: data.videos || [],
-        };
-        
-        setMessages(prev => [...prev, botResponse]);
+        // Add a message about the diagram
+        setMessages(prev => [
+          ...prev.slice(0, -1), // Remove the "Generating..." message
+          {
+            id: Date.now() + 1,
+            text: "I've created a diagram based on your request. You can view and edit it in the drawing board.",
+            sender: 'bot',
+          },
+        ]);
       } else {
-        // Check if it's a video generation request
-        if (input.toLowerCase().includes('generate') || input.toLowerCase().includes('create video')) {
-          const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(input)}`);
+        // Check if user wants to list videos
+        if (userMessage.toLowerCase().includes('list videos')) {
+          const response = await fetch(`${API_BASE_URL}/list_videos`);
           
           if (!response.ok) {
             throw new Error(`Server responded with status: ${response.status}`);
@@ -116,36 +131,62 @@ const ChatInterface: React.FC = () => {
             throw new Error(data.error);
           }
           
-          setVideoUrl(data.video_url);
+          setVideoList(data.videos || []);
           
           const botResponse: Message = {
             id: Date.now() + 1,
-            text: "Here's a visualization of your request:",
+            text: "Here are the available videos:",
             sender: 'bot',
-            video: data.video_url
+            videoList: data.videos || [],
           };
           
           setMessages(prev => [...prev, botResponse]);
         } else {
-          // Handle regular chat message with Gemini
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Request timed out')), 30000);
-          });
-          
-          console.log("Sending message to Gemini API:", userInput);
-          const responsePromise = geminiService.sendMessage(userInput);
-          
-          const response = await Promise.race([responsePromise, timeoutPromise]) as string;
-          console.log("Received response from Gemini API:", response);
-          
-          setMessages(prev => [
-            ...prev,
-            {
+          // Check if it's a video generation request
+          if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create video')) {
+            const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(userMessage)}`);
+            
+            if (!response.ok) {
+              throw new Error(`Server responded with status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            
+            setVideoUrl(data.video_url);
+            
+            const botResponse: Message = {
               id: Date.now() + 1,
-              text: response || "I received your message but couldn't generate a response. Please try again.",
+              text: "Here's a visualization of your request:",
               sender: 'bot',
-            },
-          ]);
+              video: data.video_url
+            };
+            
+            setMessages(prev => [...prev, botResponse]);
+          } else {
+            // Handle regular chat message with Gemini
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Request timed out')), 30000);
+            });
+            
+            console.log("Sending message to Gemini API:", userMessage);
+            const responsePromise = geminiService.sendMessage(userMessage);
+            
+            const response = await Promise.race([responsePromise, timeoutPromise]) as string;
+            console.log("Received response from Gemini API:", response);
+            
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                text: response || "I received your message but couldn't generate a response. Please try again.",
+                sender: 'bot',
+              },
+            ]);
+          }
         }
       }
     } catch (error) {
@@ -197,6 +238,11 @@ const ChatInterface: React.FC = () => {
     setVideoList([]);
   };
 
+  // Add custom styles for Excalidraw with className
+  const handleToggleDrawingBoard = () => {
+    setShowDrawingBoard(!showDrawingBoard);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
@@ -229,10 +275,11 @@ const ChatInterface: React.FC = () => {
             New Conversation
           </button>
           <button
-            onClick={() => setShowDrawingBoard(prev => !prev)}
+            onClick={handleToggleDrawingBoard}
             className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
+            title="Open Drawing Board"
           >
-            <i className="fas fa-pencil-alt mr-2"></i>Drawing Board
+            <i className="fas fa-pencil-alt"></i>
           </button>
         </div>
       </div>
@@ -357,6 +404,14 @@ const ChatInterface: React.FC = () => {
             disabled={isLoading}
           />
           <button
+            type="button"
+            onClick={handleToggleDrawingBoard}
+            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
+            title="Open Drawing Board"
+          >
+            <i className="fas fa-pencil-alt"></i>
+          </button>
+          <button
             type="submit"
             className={`px-4 py-2 rounded-lg text-white ${
               isLoading || !input.trim()
@@ -372,9 +427,27 @@ const ChatInterface: React.FC = () => {
         </div>
       </form>
       
+      {/* Drawing board modal */}
       {showDrawingBoard && (
-        <div className="mb-4">
-          <DrawingBoard height="400px" />
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h3 className="text-lg font-medium">Drawing Board</h3>
+              <button onClick={handleToggleDrawingBoard} className="text-gray-400 hover:text-white">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto flex items-center justify-center">
+              <DrawingBoard 
+                width="100%" 
+                height="600px" 
+                className="custom-styles"
+                initialData={excalidrawElements}
+                prompt={drawingPrompt}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
