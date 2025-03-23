@@ -5,12 +5,16 @@ interface Auth0ProviderProps {
   children: ReactNode;
 }
 
-// Auth0 credentials
-const domain = 'spacecraftt.us.auth0.com';
-const clientId = '2jIxAMDZmxDW2iWGSE0yuLPGVJJZqRN2';
+// Auth0 credentials from environment variables
+const domain = import.meta.env.VITE_AUTH0_DOMAIN || '';
+const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID || '';
 const redirectUri = `${window.location.origin}/callback`;
 
 export const Auth0Provider = ({ children }: Auth0ProviderProps) => {
+  if (!domain || !clientId) {
+    console.warn('Auth0 domain or client ID not set in environment variables');
+  }
+
   return (
     <Auth0ProviderBase
       domain={domain}
