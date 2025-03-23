@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 import os
 import re
 from manim import *
-import openai
+import traceback
 import dotenv
 from flask_cors import CORS
 import boto3
@@ -29,16 +29,6 @@ s3 = session.client('s3')
 
 config.media_dir = "./out"
 
-# def generate_response(prompt):
-#     response = openai.ChatCompletion.create(
-#         model="gpt-4o",
-#         messages=[
-#             {"role": "system", "content": "This GPT helps explain complex and abstract concepts by generating illustrative Python code using the Manim animation library. It breaks down big ideas into visual, understandable components through Manim animations, leveraging examples to teach effectively. The GPT produces code that can be run directly in a Manim environment (the class name should always be MyScene), guiding users through the logic and steps involved in each animation. Before writing any code, it clearly lists out the steps it will take to create the animation, ensuring the plan is understandable and logically sequenced. It assumes familiarity with Python but explains Manim-specific syntax and choices as needed. If a concept is too broad, it narrows the scope through clarification or proposes examples that illustrate key parts. It ensures that animations include plenty of motion and transitions to enhance visual engagement. The animation resolution is set for vertical short-form content with height of 1280 and width of 720. The GPT always provides the complete code at the end of the explanation, and all code blocks are wrapped in triple backticks (```), using proper syntax highlighting for Python. It avoids going off-topic or generating content not related to visual explanation or Manim code. The GPT aims to be clear, instructive, and efficient in converting concepts into animated visuals."},
-#             {"role": "user", "content": prompt}
-#         ]
-#     )
-#     return (response['choices'][0]['message']['content'])
-
 app = Flask(__name__)
 CORS(app, origins=["https://tidal-2025.pages.dev"])
 
@@ -57,12 +47,17 @@ def run_code():
     if not prompt:
         return jsonify({"error": "Prompt parameter is missing."}), 400
 
-    res = generate_steps(prompt)
+    print('Generating steps...')
+    res = generate_steps(prompt, 'chatGPT')
+    print('Steps generated.')
+
     steps = res.split("---")
-    for step in steps:
-        code = generate_code(step)
-        with open("out.txt", "a") as f:
-            f.write(code + "\n---\n")   
+    with open("out.txt", "w") as f:
+        f.write("")
+
+    for i, step in enumerate(steps):
+        print(f'Generating code for step {i+1}/{len(steps)}...')
+        code = generate_code(step, 'gemini')
         pattern = r'```(?:python)?\s*(.*?)```'
         match = re.search(pattern, code, re.DOTALL)
     
@@ -72,17 +67,24 @@ def run_code():
         else:
             code = "Error: No code found in the response."
 
+        with open("out.txt", "a", encoding='utf-8') as f:
+            f.write(code + "\n---\n")   
         snippets.append(code)
     
-    combined = generate_combined("\n---\n".join(snippets))
+    print('Generating combined code...')
+    combined = generate_combined("\n---\n".join(snippets), 'gemini')
+    print('Combined code generated.')
 
+    with open("combined.py", "w", encoding='utf-8') as f:
+        f.write(combined)
     # Execute the extracted code in the same scope.
     try:
         global_namespace = {}
         exec(combined, global_namespace)
         global_namespace["MyScene"]().render()
     except Exception as e:
-        return jsonify({"error": f"Something broke: {e}"}), 500
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": str(e), "traceback": error_traceback}), 500
 
     video_files = glob.glob("./out/videos/**/MyScene.mp4", recursive=True)
     if not video_files:
@@ -122,5 +124,5 @@ def home():
 
 if __name__ == '__main__':
     # Use the PORT environment variable provided by Render
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
