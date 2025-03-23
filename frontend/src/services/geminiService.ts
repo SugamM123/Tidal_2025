@@ -260,7 +260,7 @@ graph LR
     D --> E[Low Address]
 ||
 
-do not use colors in the diagrams. only shapes colors will break things
+do not use colors in the diagrams. only shapes: COLORS WILL break things!!!!!
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:2px
