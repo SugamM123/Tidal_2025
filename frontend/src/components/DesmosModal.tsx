@@ -9,17 +9,15 @@ interface DesmosModalProps {
 }
 
 const DesmosModal: React.FC<DesmosModalProps> = ({ isOpen, onClose, expression }) => {
-  const [processedExpression, setProcessedExpression] = useState('');
-  
   useEffect(() => {
-    if (expression) {
+    // No preprocessing needed for graph data structure
+    if (expression && typeof expression === 'string') {
       try {
-        // Try to convert natural language to LaTeX if needed
+        // Only process strings through naturalLanguageToLatex
         const processed = naturalLanguageToLatex(expression);
-        setProcessedExpression(processed);
+        expression = processed;
       } catch (error) {
         console.error('Error processing expression:', error);
-        setProcessedExpression(expression);
       }
     }
   }, [expression]);
@@ -42,20 +40,15 @@ const DesmosModal: React.FC<DesmosModalProps> = ({ isOpen, onClose, expression }
         
         <div className="p-4 flex-1 overflow-auto">
           <div className="mb-4">
-            <h3 className="text-white text-lg mb-2">Original Expression:</h3>
+            <h3 className="text-white text-lg mb-2">Expression Details:</h3>
             <div className="bg-gray-800 p-3 rounded">
-              <code className="text-green-400">{expression}</code>
+              <code className="text-green-400">
+                {typeof expression === 'string'
+                  ? expression
+                  : JSON.stringify(expression, null, 2)}
+              </code>
             </div>
           </div>
-          
-          {processedExpression !== expression && (
-            <div className="mb-4">
-              <h3 className="text-white text-lg mb-2">Processed LaTeX:</h3>
-              <div className="bg-gray-800 p-3 rounded">
-                <code className="text-blue-400">{processedExpression}</code>
-              </div>
-            </div>
-          )}
           
           <DesmosStudio 
             initialExpression={expression} 

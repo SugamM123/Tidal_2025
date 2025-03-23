@@ -249,7 +249,7 @@ DO NOT USE MULTILETTER VARIABLES. please only use single letter variables. becau
 <DiagramTool>
 If you choose to use the Diagram tool, you will be able to create a diagram of anything using the power of Excalidraw.
 
-This tool will use mermaid to excalidraw to create the diagrams
+This tool will use mermaid to create the diagrams
 
 for an example you use the following format:
 ||
@@ -258,12 +258,17 @@ graph LR
     B --> C(Old EBP)
     C --> D(Buffer)
     D --> E[Low Address]
+||
+
+do not use colors in the diagrams. only shapes colors will break things
+
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:2px
-    style C fill:#ccf,stroke:#333,stroke-width:2px
+    style C fill:#f9f,stroke:#333,stroke-width:2px
     style D fill:#ccf,stroke:#333,stroke-width:2px
     style E fill:#f9f,stroke:#333,stroke-width:2px
-||
+
+this is not good and will break the style and formatting
 </DiagramTool>
 
 <WolframTool>
@@ -291,8 +296,6 @@ graph LR
     C --> D[System Calls];
     D --> E((Kernel));
     E --> F[Hardware];
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#f9f,stroke:#333,stroke-width:2px
 ||
 ---
 

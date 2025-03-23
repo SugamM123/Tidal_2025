@@ -92,11 +92,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
         </ReactMarkdown>
       </div>
       
-      {latexExpression && (
+      {/* {latexExpression && (
         <div className="mt-4 mb-2">
           <DesmosStudio initialExpression={latexExpression} height="300px" />
         </div>
-      )}
+      )} */}
     </div>
   );
 };

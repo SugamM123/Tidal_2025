@@ -47,11 +47,12 @@ export const ExcalidrawWrapper: React.FC<ExcalidrawWrapperProps> = ({ mermaidCod
 
   return (
     <div 
-      className="my-4 border border-gray-700 rounded-lg overflow-hidden bg-[#1e1e1e] p-4" 
-      style={{ 
-        minHeight: "200px",
-        maxWidth: "800px",
-        margin: "0 auto"
+      className="w-full h-full border border-gray-700 rounded-lg overflow-visible bg-[#1e1e1e] p-4"
+      style={{
+        minHeight: "400px",
+        minWidth: "600px",
+        margin: "0 auto",
+        position: "relative"
       }}
     >
       {svgCode ? (
@@ -61,8 +62,14 @@ export const ExcalidrawWrapper: React.FC<ExcalidrawWrapperProps> = ({ mermaidCod
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            width: '100%',
-            height: '100%'
+            width: '50%',
+            height: '50%',
+            transform: 'scale(2)',
+            transformOrigin: 'center center',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%) scale(2)'
           }}
         />
       ) : (

@@ -33,9 +33,16 @@ const DesmosGraph: React.FC<DesmosGraphProps> = ({
           invertedColors: true
         });
         
-        // Set the expression
+        // Set expressions
         try {
-          calculator.setExpression(expression);
+          if (expression.graph && Array.isArray(expression.graph.elements)) {
+            calculator.setBlank(); // Clear existing expressions
+            expression.graph.elements.forEach(element => {
+              calculator.setExpression(element);
+            });
+          } else {
+            calculator.setExpression(expression);
+          }
         } catch (error) {
           console.error('Error setting expression in Desmos:', error);
         }

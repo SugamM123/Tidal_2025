@@ -46,6 +46,10 @@ const ChatInterface: React.FC = () => {
     .nodeLabel {
         color: #FFF !important;
     }
+
+    .flowchart-link {
+      background-color: transparent !important;
+    }
   `;
   
   useEffect(() => {
@@ -184,21 +188,8 @@ const ChatInterface: React.FC = () => {
         }
 
         if (frontmatter.graph) {
-          // Convert graph elements to Desmos format
-          const graphExpression = frontmatter.graph.elements
-            .map(element => {
-              if ('latex' in element) {
-                return `${element.id},${element.latex},${element.color || ''}`;
-              } else if ('sliderBounds' in element) {
-                const { min, max, step } = element.sliderBounds;
-                return `${element.id},${min},${max},${step}`;
-              }
-              return '';
-            })
-            .filter(Boolean)
-            .join('|');
-          
-          setCurrentExpression(graphExpression);
+          // Pass the graph data structure directly
+          setCurrentExpression(frontmatter.graph);
           setDesmosModalOpen(true);
         }
 
@@ -340,7 +331,7 @@ const ChatInterface: React.FC = () => {
             }`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
+              className={`max-w-[95%] rounded-lg p-3 ${
                 message.sender === 'user'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
@@ -354,10 +345,16 @@ const ChatInterface: React.FC = () => {
                   
                   {/* Mermaid diagram */}
                   {message.mermaidCode && (
-                    <ExcalidrawWrapper mermaidCode={message.mermaidCode} />
+                    <div className="mt-4 w-full">
+                      <div className="w-full min-h-[400px] bg-[#1e1e1e] rounded-lg p-6">
+                        <div className="w-full h-full">
+                          <ExcalidrawWrapper mermaidCode={message.mermaidCode} />
+                        </div>
+                      </div>
+                    </div>
                   )}
                   
-                  {/* Graph expression */}
+                  {/* Graph expression
                   {message.graphExpression && (
                     <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
                       <span className="text-xs text-gray-300">Mathematical expression detected</span>
@@ -368,7 +365,7 @@ const ChatInterface: React.FC = () => {
                         Open in Desmos Studio
                       </button>
                     </div>
-                  )}
+                  )} */}
                   
                   {/* Video */}
                   {message.video && (
