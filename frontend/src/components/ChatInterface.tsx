@@ -82,11 +82,14 @@ const ChatInterface: React.FC = () => {
     }
 
     try {
-      // Check if the user is asking for a drawing
+      // Check if the user is asking for a drawing or Mermaid diagram
       const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
-      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      const mermaidKeywords = ['mermaid', 'flowchart', 'sequence diagram', 'gantt chart', 'erdiagram', 'class diagram'];
       
-      if (isDrawingRequest) {
+      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      const isMermaidRequest = mermaidKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      
+      if (isDrawingRequest || isMermaidRequest) {
         // Let the user know we're generating a diagram
         setMessages(prev => [
           ...prev,
@@ -112,7 +115,9 @@ const ChatInterface: React.FC = () => {
           ...prev.slice(0, -1), // Remove the "Generating..." message
           {
             id: Date.now() + 1,
-            text: "I've created a diagram based on your request. You can view and edit it in the drawing board.",
+            text: isMermaidRequest 
+              ? "I've created a Mermaid diagram based on your request. You can view and edit it in the drawing board."
+              : "I've created a diagram based on your request. You can view and edit it in the drawing board.",
             sender: 'bot',
           },
         ]);
@@ -276,10 +281,13 @@ const ChatInterface: React.FC = () => {
           </button>
           <button
             onClick={handleToggleDrawingBoard}
-            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
-            title="Open Drawing Board"
+            className={`px-4 py-2 rounded-lg hover:bg-gray-600 text-white ${
+              showDrawingBoard ? 'bg-blue-600' : 'bg-gray-700'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
           >
-            <i className="fas fa-pencil-alt"></i>
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'} mr-2`}></i>
+            {showDrawingBoard ? 'Close Drawing' : 'Open Drawing'}
           </button>
         </div>
       </div>
@@ -406,10 +414,12 @@ const ChatInterface: React.FC = () => {
           <button
             type="button"
             onClick={handleToggleDrawingBoard}
-            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
-            title="Open Drawing Board"
+            className={`px-4 py-2 rounded-lg text-white ${
+              showDrawingBoard ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
           >
-            <i className="fas fa-pencil-alt"></i>
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'}`}></i>
           </button>
           <button
             type="submit"
@@ -431,13 +441,6 @@ const ChatInterface: React.FC = () => {
       {showDrawingBoard && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h3 className="text-lg font-medium">Drawing Board</h3>
-              <button onClick={handleToggleDrawingBoard} className="text-gray-400 hover:text-white">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            
             <div className="flex-1 overflow-auto flex items-center justify-center">
               <DrawingBoard 
                 width="100%" 
@@ -445,6 +448,7 @@ const ChatInterface: React.FC = () => {
                 className="custom-styles"
                 initialData={excalidrawElements}
                 prompt={drawingPrompt}
+                onClose={handleToggleDrawingBoard}
               />
             </div>
           </div>
