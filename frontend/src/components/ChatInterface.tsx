@@ -42,7 +42,12 @@ const ChatInterface: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
   // Drawing board state removed - now using frontmatter for diagrams
-
+  const css = `
+    .nodeLabel {
+        color: #FFF !important;
+    }
+  `;
+  
   useEffect(() => {
     // Scroll to bottom of messages
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -471,17 +476,7 @@ const ChatInterface: React.FC = () => {
       />
       
       {/* Excalidraw Modal */}
-    <style>
-      /* Make all mermaid text elements black */
-      .nodeLabel,
-      .edgeLabel,
-      .messageText,
-      .taskText,
-      .sectionTitle,
-      .mermaid * {
-        color: black !important;
-      }
-    </style>
+      <style>{css}</style>
     </div>
 
   );
