@@ -1,17 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from '../services/geminiService';
 import { useAuth0 } from '@auth0/auth0-react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './MarkdownRenderer';
+import DesmosModal from './DesmosModal';
+import { detectMathExpression, shouldShowGraph } from '../utils/mathParser';
+import { processCommand } from '../utils/commandProcessor';
+import { extractFrontmatter } from '../utils/frontmatterParser';
+import { ParsedFrontmatter } from '../utils/toolParsers';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
-import DrawingBoard from './DrawingBoard';
-import { ExcalidrawElement } from "@excalidraw/excalidraw";
-import { excalidrawService } from './ExcalidrawService';
+// Drawing imports removed - now using frontmatter for diagrams
 
 interface Message {
   id: number;
   text: string;
   sender: 'user' | 'bot';
+  graphExpression?: string;
+  frontmatter?: ParsedFrontmatter;
   video?: string;
   videoList?: { key: string; size: number; last_modified: string; url: string }[];
 }
@@ -30,13 +35,13 @@ const ChatInterface: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [desmosModalOpen, setDesmosModalOpen] = useState(false);
+  const [currentExpression, setCurrentExpression] = useState('');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
-  const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
-  const [drawingPrompt, setDrawingPrompt] = useState('');
+  // Drawing board state removed - now using frontmatter for diagrams
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -45,10 +50,10 @@ const ChatInterface: React.FC = () => {
 
   // Add initial greeting when component mounts
   useEffect(() => {
-    const initialGreeting = {
+    const initialGreeting: Message = {
       id: 0,
-      text: "Hi! I'm Alpha Assistant. How can I help you today?",
-      sender: 'bot',
+      text: "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can help with STEM topics, generate visualizations, and assist with mathematical concepts.",
+      sender: 'bot' as const,
     };
     
     setMessages([initialGreeting]);
@@ -78,121 +83,144 @@ const ChatInterface: React.FC = () => {
       if (shouldLogin) {
         loginWithRedirect();
       }
+      setIsLoading(false);
       return;
     }
 
     try {
-      // Check if the user is asking for a drawing or Mermaid diagram
-      const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
-      const mermaidKeywords = ['mermaid', 'flowchart', 'sequence diagram', 'gantt chart', 'erdiagram', 'class diagram'];
-      
-      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      const isMermaidRequest = mermaidKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      
-      if (isDrawingRequest || isMermaidRequest) {
-        // Let the user know we're generating a diagram
+      // Simple message for testing
+      if (userMessage.toLowerCase() === 'test') {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Fake delay
+        setMessages((prev) => [
+          ...prev,
+          { id: prev.length, text: "Test successful! The chat interface is working properly.\n\n**Bold text** and *italic text* should be formatted correctly.", sender: 'bot' },
+        ]);
+        setIsLoading(false);
+        return;
+      } else if (userMessage.toLowerCase().includes('list videos')) {
+        // Handle video listing
+        const response = await fetch(`${API_BASE_URL}/list_videos`);
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setVideoList(data.videos || []);
         setMessages(prev => [
           ...prev,
           {
             id: Date.now() + 1,
-            text: "Generating a diagram based on your request...",
-            sender: 'bot',
-          },
-        ]);
-        
-        // Generate the diagram
-        const diagramElements = await excalidrawService.generateDiagram(userMessage);
-        
-        // Update the state to hold the generated elements
-        setExcalidrawElements(diagramElements);
-        setDrawingPrompt(userMessage);
-        
-        // Show the drawing board
-        setShowDrawingBoard(true);
-        
-        // Add a message about the diagram
-        setMessages(prev => [
-          ...prev.slice(0, -1), // Remove the "Generating..." message
-          {
-            id: Date.now() + 1,
-            text: isMermaidRequest 
-              ? "I've created a Mermaid diagram based on your request. You can view and edit it in the drawing board."
-              : "I've created a diagram based on your request. You can view and edit it in the drawing board.",
-            sender: 'bot',
-          },
-        ]);
-      } else {
-        // Check if user wants to list videos
-        if (userMessage.toLowerCase().includes('list videos')) {
-          const response = await fetch(`${API_BASE_URL}/list_videos`);
-          
-          if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          
-          if (data.error) {
-            throw new Error(data.error);
-          }
-          
-          setVideoList(data.videos || []);
-          
-          const botResponse: Message = {
-            id: Date.now() + 1,
             text: "Here are the available videos:",
             sender: 'bot',
             videoList: data.videos || [],
-          };
-          
-          setMessages(prev => [...prev, botResponse]);
-        } else {
-          // Check if it's a video generation request
-          if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create video')) {
-            const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(userMessage)}`);
-            
-            if (!response.ok) {
-              throw new Error(`Server responded with status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.error) {
-              throw new Error(data.error);
-            }
-            
-            setVideoUrl(data.video_url);
-            
-            const botResponse: Message = {
-              id: Date.now() + 1,
-              text: "Here's a visualization of your request:",
-              sender: 'bot',
-              video: data.video_url
-            };
-            
-            setMessages(prev => [...prev, botResponse]);
-          } else {
-            // Handle regular chat message with Gemini
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Request timed out')), 30000);
-            });
-            
-            console.log("Sending message to Gemini API:", userMessage);
-            const responsePromise = geminiService.sendMessage(userMessage);
-            
-            const response = await Promise.race([responsePromise, timeoutPromise]) as string;
-            console.log("Received response from Gemini API:", response);
-            
-            setMessages(prev => [
-              ...prev,
-              {
-                id: Date.now() + 1,
-                text: response || "I received your message but couldn't generate a response. Please try again.",
-                sender: 'bot',
-              },
-            ]);
-          }
+          },
+        ]);
+      } else if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create video')) {
+        // Handle video generation
+        const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(userMessage)}`);
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
         }
+        
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setVideoUrl(data.video_url);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: "Here's a visualization of your request:",
+            sender: 'bot',
+            video: data.video_url
+          },
+        ]);
+      } else {
+        // Handle regular chat message with Gemini
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timed out')), 30000);
+        });
+        
+        console.log("Sending message to Gemini API:", userMessage);
+        const responsePromise = geminiService.sendMessage(userMessage);
+        const response = await Promise.race([responsePromise, timeoutPromise]) as string;
+        console.log("Received response from Gemini API:", response);
+        
+        // Process frontmatter if present
+        const { frontmatter, content } = extractFrontmatter(response);
+
+        // Handle special commands from frontmatter first
+        if (frontmatter.video) {
+          // Handle video generation
+          const videoResponse = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(frontmatter.video.description)}`);
+          if (!videoResponse.ok) {
+            throw new Error(`Server responded with status: ${videoResponse.status}`);
+          }
+          const videoData = await videoResponse.json();
+          if (videoData.error) {
+            throw new Error(videoData.error);
+          }
+          setVideoUrl(videoData.video_url);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              text: "Here's a visualization based on the request:",
+              sender: 'bot',
+              video: videoData.video_url
+            },
+          ]);
+        }
+
+        if (frontmatter.graph) {
+          // Convert graph elements to Desmos format
+          const graphExpression = frontmatter.graph.elements
+            .map(element => {
+              if (element.type === 'line') {
+                return `${element.id},${element.equation},${element.color}`;
+              } else {
+                return `${element.id},${element.min},${element.max},${element.step}`;
+              }
+            })
+            .join('|');
+          
+          setCurrentExpression(graphExpression);
+          setDesmosModalOpen(true);
+        }
+
+        if (frontmatter.diagram?.mermaidCode) {
+          // Add mermaid diagram to messages
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              text: `\`\`\`mermaid\n${frontmatter.diagram!.mermaidCode}\n\`\`\``,
+              sender: 'bot'
+            },
+          ]);
+        }
+
+        // Check for mathematical expressions in content
+        const responseHasGraph = shouldShowGraph(content);
+        const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
+        
+        // Add the main content message
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: content || "I received your message but couldn't generate a response. Please try again.",
+            sender: 'bot',
+            graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
+            frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
+          },
+        ]);
       }
     } catch (error) {
       console.error('Error getting response:', error);
@@ -232,8 +260,8 @@ const ChatInterface: React.FC = () => {
       {
         id: 0,
         text: success 
-          ? "Hi! I'm Alpha Assistant. How can I help you today?" 
-          : "Hi! I'm Alpha Assistant. Note: There was an issue resetting the conversation history.",
+          ? "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can help with STEM topics, generate visualizations, and assist with mathematical concepts."
+          : "Welcome to Alpha Assistant. Note: There was an issue resetting the conversation history.",
         sender: 'bot',
       },
     ]);
@@ -241,24 +269,32 @@ const ChatInterface: React.FC = () => {
     setDebugInfo(null);
     setVideoUrl(null);
     setVideoList([]);
+    setDesmosModalOpen(false);
+    setCurrentExpression('');
   };
 
-  // Add custom styles for Excalidraw with className
-  const handleToggleDrawingBoard = () => {
-    setShowDrawingBoard(!showDrawingBoard);
+  // Drawing board toggle removed - now using frontmatter for diagrams
+
+  const openDesmosWithExpression = (expression: string) => {
+    setCurrentExpression(expression);
+    setDesmosModalOpen(true);
   };
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold">Chat</h2>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={async () => { 
-              setInput('list videos'); 
-              handleSubmit(new Event('submit') as React.FormEvent); 
+            onClick={async () => {
+              setInput('list videos');
+              handleSubmit({
+                preventDefault: () => {},
+                type: 'submit'
+              } as React.FormEvent);
             }}
             className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
           >
@@ -279,19 +315,11 @@ const ChatInterface: React.FC = () => {
           >
             New Conversation
           </button>
-          <button
-            onClick={handleToggleDrawingBoard}
-            className={`px-4 py-2 rounded-lg hover:bg-gray-600 text-white ${
-              showDrawingBoard ? 'bg-blue-600' : 'bg-gray-700'
-            }`}
-            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
-          >
-            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'} mr-2`}></i>
-            {showDrawingBoard ? 'Close Drawing' : 'Open Drawing'}
-          </button>
+          {/* Drawing board button removed - now using frontmatter for diagrams */}
         </div>
       </div>
       
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map(message => (
           <div
@@ -310,31 +338,23 @@ const ChatInterface: React.FC = () => {
               {message.sender === 'user' ? (
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
-                <div className="markdown-content">
-                  <ReactMarkdown 
-                    components={{
-                      h1: ({children}) => <h1 className="text-xl font-bold my-3">{children}</h1>,
-                      h2: ({children}) => <h2 className="text-lg font-bold my-2">{children}</h2>,
-                      h3: ({children}) => <h3 className="text-md font-bold my-2">{children}</h3>,
-                      ul: ({children}) => <ul className="list-disc ml-6 my-2">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal ml-6 my-2">{children}</ol>,
-                      li: ({children}) => <li className="my-1">{children}</li>,
-                      code: ({className, children, node}: any) => {
-                        const isInline = !node?.position?.start?.line;
-                        return isInline ? 
-                          <code className="bg-gray-800 px-1 rounded text-pink-300">{children}</code> : 
-                          <code className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto text-pink-300">{children}</code>;
-                      },
-                      a: ({href, children}) => <a href={href} className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">{children}</a>,
-                      blockquote: ({children}) => <blockquote className="border-l-4 border-gray-500 pl-4 py-1 my-2 italic">{children}</blockquote>,
-                      em: ({children}) => <em className="italic">{children}</em>,
-                      strong: ({children}) => <strong className="font-bold">{children}</strong>,
-                      p: ({children}) => <p className="mb-3">{children}</p>
-                    }}
-                  >
-                    {message.text}
-                  </ReactMarkdown>
+                <div>
+                  <MarkdownRenderer content={message.text} />
                   
+                  {/* Graph expression */}
+                  {message.graphExpression && (
+                    <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
+                      <span className="text-xs text-gray-300">Mathematical expression detected</span>
+                      <button 
+                        onClick={() => openDesmosWithExpression(message.graphExpression!)} 
+                        className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Open in Desmos Studio
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Video */}
                   {message.video && (
                     <div className="mt-3">
                       <MediaViewer
@@ -346,6 +366,7 @@ const ChatInterface: React.FC = () => {
                     </div>
                   )}
                   
+                  {/* Video list */}
                   {message.videoList && message.videoList.length > 0 && (
                     <div className="mt-3">
                       <MediaGallery
@@ -373,6 +394,7 @@ const ChatInterface: React.FC = () => {
           </div>
         ))}
         
+        {/* Loading indicator */}
         {isLoading && (
           <div className="flex justify-center">
             <div className="bg-gray-700 text-white rounded-lg p-3">
@@ -393,6 +415,7 @@ const ChatInterface: React.FC = () => {
           </div>
         )}
         
+        {/* Debug info */}
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-800 text-red-300 rounded-lg text-xs overflow-x-auto">
             <pre>{debugInfo}</pre>
@@ -401,26 +424,18 @@ const ChatInterface: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
       
+      {/* Input form */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask me anything or type 'generate' to create a visualization!"
+            className="flex-1 bg-[#2a2a2a] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask a question, generate visualizations, or mention math concepts..."
             disabled={isLoading}
           />
-          <button
-            type="button"
-            onClick={handleToggleDrawingBoard}
-            className={`px-4 py-2 rounded-lg text-white ${
-              showDrawingBoard ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
-          >
-            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'}`}></i>
-          </button>
+          {/* Drawing board button removed - now using frontmatter for diagrams */}
           <button
             type="submit"
             className={`px-4 py-2 rounded-lg text-white ${
@@ -437,23 +452,14 @@ const ChatInterface: React.FC = () => {
         </div>
       </form>
       
-      {/* Drawing board modal */}
-      {showDrawingBoard && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-auto flex items-center justify-center">
-              <DrawingBoard 
-                width="100%" 
-                height="600px" 
-                className="custom-styles"
-                initialData={excalidrawElements}
-                prompt={drawingPrompt}
-                onClose={handleToggleDrawingBoard}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      <DesmosModal
+        isOpen={desmosModalOpen}
+        onClose={() => setDesmosModalOpen(false)}
+        expression={currentExpression}
+      />
+      
+      {/* Drawing board removed in favor of frontmatter-based diagram rendering */}
     </div>
   );
 };
