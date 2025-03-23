@@ -9,10 +9,7 @@ import { extractFrontmatter } from '../utils/frontmatterParser';
 import { ParsedFrontmatter } from '../utils/toolParsers';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
-import DrawingBoard from './DrawingBoard';
-// Temporary type until @excalidraw/excalidraw is installed
-type ExcalidrawElement = any;
-import { excalidrawService } from './ExcalidrawService';
+// Drawing imports removed - now using frontmatter for diagrams
 
 interface Message {
   id: number;
@@ -44,9 +41,7 @@ const ChatInterface: React.FC = () => {
   const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
-  const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
-  const [drawingPrompt, setDrawingPrompt] = useState('');
+  // Drawing board state removed - now using frontmatter for diagrams
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -93,12 +88,6 @@ const ChatInterface: React.FC = () => {
     }
 
     try {
-      const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
-      const mermaidKeywords = ['mermaid', 'flowchart', 'sequence diagram', 'gantt chart', 'erdiagram', 'class diagram'];
-      
-      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      const isMermaidRequest = mermaidKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      
       // Simple message for testing
       if (userMessage.toLowerCase() === 'test') {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Fake delay
@@ -108,34 +97,6 @@ const ChatInterface: React.FC = () => {
         ]);
         setIsLoading(false);
         return;
-      }
-
-      if (isDrawingRequest || isMermaidRequest) {
-        // Handle drawing request
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            text: "Generating a diagram based on your request...",
-            sender: 'bot',
-          },
-        ]);
-        
-        const diagramElements = await excalidrawService.generateDiagram(userMessage);
-        setExcalidrawElements(diagramElements);
-        setDrawingPrompt(userMessage);
-        setShowDrawingBoard(true);
-        
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          {
-            id: Date.now() + 1,
-            text: isMermaidRequest 
-              ? "I've created a Mermaid diagram based on your request. You can view and edit it in the drawing board."
-              : "I've created a diagram based on your request. You can view and edit it in the drawing board.",
-            sender: 'bot',
-          },
-        ]);
       } else if (userMessage.toLowerCase().includes('list videos')) {
         // Handle video listing
         const response = await fetch(`${API_BASE_URL}/list_videos`);
@@ -312,9 +273,7 @@ const ChatInterface: React.FC = () => {
     setCurrentExpression('');
   };
 
-  const handleToggleDrawingBoard = () => {
-    setShowDrawingBoard(!showDrawingBoard);
-  };
+  // Drawing board toggle removed - now using frontmatter for diagrams
 
   const openDesmosWithExpression = (expression: string) => {
     setCurrentExpression(expression);
@@ -356,16 +315,7 @@ const ChatInterface: React.FC = () => {
           >
             New Conversation
           </button>
-          <button
-            onClick={handleToggleDrawingBoard}
-            className={`px-4 py-2 rounded-lg hover:bg-gray-600 text-white ${
-              showDrawingBoard ? 'bg-blue-600' : 'bg-gray-700'
-            }`}
-            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
-          >
-            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'} mr-2`}></i>
-            {showDrawingBoard ? 'Close Drawing' : 'Open Drawing'}
-          </button>
+          {/* Drawing board button removed - now using frontmatter for diagrams */}
         </div>
       </div>
       
@@ -485,16 +435,7 @@ const ChatInterface: React.FC = () => {
             placeholder="Ask a question, generate visualizations, or mention math concepts..."
             disabled={isLoading}
           />
-          <button
-            type="button"
-            onClick={handleToggleDrawingBoard}
-            className={`px-4 py-2 rounded-lg text-white ${
-              showDrawingBoard ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
-          >
-            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'}`}></i>
-          </button>
+          {/* Drawing board button removed - now using frontmatter for diagrams */}
           <button
             type="submit"
             className={`px-4 py-2 rounded-lg text-white ${
@@ -518,22 +459,7 @@ const ChatInterface: React.FC = () => {
         expression={currentExpression}
       />
       
-      {showDrawingBoard && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-auto flex items-center justify-center">
-              <DrawingBoard 
-                width="100%" 
-                height="600px" 
-                className="custom-styles"
-                initialData={excalidrawElements}
-                prompt={drawingPrompt}
-                onClose={handleToggleDrawingBoard}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Drawing board removed in favor of frontmatter-based diagram rendering */}
     </div>
   );
 };
