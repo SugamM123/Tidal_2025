@@ -9,8 +9,7 @@ import { extractFrontmatter } from '../utils/frontmatterParser';
 import { ParsedFrontmatter } from '../utils/toolParsers';
 import MediaViewer from './MediaViewer';
 import MediaGallery, { MediaItem } from './MediaGallery';
-// Drawing imports removed - now using frontmatter for diagrams
-
+import { ExcalidrawWrapper } from './ExcalidrawWrapper';
 interface Message {
   id: number;
   text: string;
@@ -19,6 +18,7 @@ interface Message {
   frontmatter?: ParsedFrontmatter;
   video?: string;
   videoList?: { key: string; size: number; last_modified: string; url: string }[];
+  mermaidCode?: string;
 }
 
 interface Video {
@@ -182,31 +182,35 @@ const ChatInterface: React.FC = () => {
           // Convert graph elements to Desmos format
           const graphExpression = frontmatter.graph.elements
             .map(element => {
-              if (element.type === 'line') {
-                return `${element.id},${element.equation},${element.color}`;
-              } else {
-                return `${element.id},${element.min},${element.max},${element.step}`;
+              if ('latex' in element) {
+                return `${element.id},${element.latex},${element.color || ''}`;
+              } else if ('sliderBounds' in element) {
+                const { min, max, step } = element.sliderBounds;
+                return `${element.id},${min},${max},${step}`;
               }
+              return '';
             })
+            .filter(Boolean)
             .join('|');
           
           setCurrentExpression(graphExpression);
           setDesmosModalOpen(true);
         }
 
+        // Add diagram message if present
         if (frontmatter.diagram?.mermaidCode) {
-          // Add mermaid diagram to messages
           setMessages(prev => [
             ...prev,
             {
               id: Date.now() + 1,
-              text: `\`\`\`mermaid\n${frontmatter.diagram!.mermaidCode}\n\`\`\``,
-              sender: 'bot'
-            },
+              text: "",
+              sender: 'bot',
+              mermaidCode: frontmatter.diagram!.mermaidCode
+            }
           ]);
         }
 
-        // Check for mathematical expressions in content
+        // Check for mathematical expressions
         const responseHasGraph = shouldShowGraph(content);
         const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
         
@@ -280,6 +284,8 @@ const ChatInterface: React.FC = () => {
     setDesmosModalOpen(true);
   };
 
+
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -339,13 +345,18 @@ const ChatInterface: React.FC = () => {
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
                 <div>
-                  <MarkdownRenderer content={message.text} />
+                  {message.text && <MarkdownRenderer content={message.text} />}
+                  
+                  {/* Mermaid diagram */}
+                  {message.mermaidCode && (
+                    <ExcalidrawWrapper mermaidCode={message.mermaidCode} />
+                  )}
                   
                   {/* Graph expression */}
                   {message.graphExpression && (
                     <div className="mt-4 flex justify-between items-center bg-[#1e1e1e] rounded-lg p-2">
                       <span className="text-xs text-gray-300">Mathematical expression detected</span>
-                      <button 
+                      <button
                         onClick={() => openDesmosWithExpression(message.graphExpression!)} 
                         className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
                       >
@@ -459,7 +470,7 @@ const ChatInterface: React.FC = () => {
         expression={currentExpression}
       />
       
-      {/* Drawing board removed in favor of frontmatter-based diagram rendering */}
+      {/* Excalidraw Modal */}
     </div>
   );
 };
