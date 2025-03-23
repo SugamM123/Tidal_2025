@@ -22,3 +22,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# python
+.venv
+
+# manim
+backend/media
+backend/out
+backend/__pycache__
+backend/.DS_Store
+backend/.env
+
+
+frontend/.env

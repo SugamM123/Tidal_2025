@@ -6,15 +6,32 @@ import DesmosModal from './DesmosModal';
 import { detectMathExpression, shouldShowGraph } from '../utils/mathParser';
 import { processCommand } from '../utils/commandProcessor';
 import { extractFrontmatter } from '../utils/frontmatterParser';
-import { ParsedFrontmatter, GraphCommand, GraphLine } from '../utils/toolParsers';
+import { ParsedFrontmatter } from '../utils/toolParsers';
+import MediaViewer from './MediaViewer';
+import MediaGallery from './MediaGallery';
+import DrawingBoard from './DrawingBoard';
+// Temporary type until @excalidraw/excalidraw is installed
+type ExcalidrawElement = any;
+import { excalidrawService } from './ExcalidrawService';
 
 interface Message {
   id: number;
   text: string;
-  isUser: boolean;
+  sender: 'user' | 'bot';
   graphExpression?: string;
   frontmatter?: ParsedFrontmatter;
+  video?: string;
+  videoList?: { key: string; size: number; last_modified: string; url: string }[];
 }
+
+interface Video {
+  key: string;
+  size: number;
+  last_modified: string;
+  url: string;
+}
+
+const API_BASE_URL = 'https://alphaapi.shlokbhakta.dev';
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,8 +40,13 @@ const ChatInterface: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const [desmosModalOpen, setDesmosModalOpen] = useState(false);
   const [currentExpression, setCurrentExpression] = useState('');
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState<Video[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
+  const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
+  const [drawingPrompt, setDrawingPrompt] = useState('');
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -33,10 +55,10 @@ const ChatInterface: React.FC = () => {
 
   // Add initial greeting when component mounts
   useEffect(() => {
-    const initialGreeting = {
+    const initialGreeting: Message = {
       id: 0,
       text: "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra.",
-      isUser: false,
+      sender: 'bot' as const,
     };
     
     setMessages([initialGreeting]);
@@ -44,21 +66,24 @@ const ChatInterface: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setDebugInfo(null); // Clear previous debug info
+    if (!input.trim() || isLoading) return;
     
-    if (!input.trim()) return;
-
+    const userMessage = input;
+    setInput('');
+    setIsLoading(true);
+    
     // Process commands
-    const commandResult = processCommand(input);
+    const commandResult = processCommand(userMessage);
     if (commandResult.isCommand) {
-      const userMessage: Message = { 
-        id: messages.length, 
-        text: input, 
-        isUser: true 
-      };
-      
-      setMessages((prev) => [...prev, userMessage]);
-      setInput('');
+      // Add user message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          text: userMessage,
+          sender: 'user',
+        },
+      ]);
       
       // Handle different command actions
       if (commandResult.action === 'clear') {
@@ -78,111 +103,191 @@ const ChatInterface: React.FC = () => {
           { 
             id: prev.length, 
             text: commandResult.message || '',
-            isUser: false,
+            sender: 'bot',
             graphExpression: commandResult.action === 'desmos' ? commandResult.data?.expression : undefined
           },
         ]);
       }
       
+      setIsLoading(false);
       return;
     }
-
+    
+    // Add user message to chat
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        text: userMessage,
+        sender: 'user',
+      },
+    ]);
+    
     // If user is not authenticated, prompt login
     if (!isAuthenticated) {
       const shouldLogin = window.confirm('Please log in to use the chat. Would you like to log in now?');
       if (shouldLogin) {
         loginWithRedirect();
       }
+      setIsLoading(false);
       return;
     }
 
-    // Check if the input contains a graph request
-    const mathExpression = detectMathExpression(input);
-    const userMessage: Message = { 
-      id: messages.length, 
-      text: input, 
-      isUser: true 
-    };
-    
-    // If there's a direct graphing request, add the graph expression to the message
-    if (mathExpression.hasEquation && shouldShowGraph(input)) {
-      userMessage.graphExpression = mathExpression.latex;
-    }
-    
-    setMessages((prev) => [...prev, userMessage]);
-    const userInput = input; // Store input before clearing
-    setInput('');
-    setIsLoading(true);
-
     try {
+      // Check if the user is asking for a drawing or Mermaid diagram
+      const drawingKeywords = ['draw', 'create diagram', 'make a diagram', 'architecture diagram', 'excalidraw'];
+      const mermaidKeywords = ['mermaid', 'flowchart', 'sequence diagram', 'gantt chart', 'erdiagram', 'class diagram'];
+      
+      const isDrawingRequest = drawingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      const isMermaidRequest = mermaidKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      
       // Simple message for testing
-      if (userInput.toLowerCase() === 'test') {
+      if (userMessage.toLowerCase() === 'test') {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Fake delay
         setMessages((prev) => [
           ...prev,
-          { id: prev.length, text: "Test successful! The chat interface is working properly.\n\n**Bold text** and *italic text* should be formatted correctly.", isUser: false },
+          { id: prev.length, text: "Test successful! The chat interface is working properly.\n\n**Bold text** and *italic text* should be formatted correctly.", sender: 'bot' },
         ]);
         setIsLoading(false);
         return;
       }
 
-      // Send message to Gemini API with timeout handling
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out')), 30000); // 30 second timeout
-      });
-      
-      console.log("Sending message to Gemini API:", userInput);
-      const responsePromise = geminiService.sendMessage(userInput);
-      
-      // Use Promise.race to implement timeout
-      const response = await Promise.race([responsePromise, timeoutPromise]) as string;
-      console.log("Received response from Gemini API:", response);
-      
-      // Process frontmatter if present
-      const { frontmatter, content } = extractFrontmatter(response);
-      
-      // Check if the processed content contains any mathematical expressions that should be graphed
-      const responseHasGraph = shouldShowGraph(content);
-      const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
-      
-      // Add AI response to messages with both content and frontmatter
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: prev.length,
-          text: content || "I received your message but couldn't generate a response. Please try again.",
-          isUser: false,
-          graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
-          frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
-        },
-      ]);
-
-      // Process any tool commands from frontmatter
-      if (frontmatter.graph) {
-        // Combine all graph elements into a single expression string
-        const graphExpression = frontmatter.graph.elements
-          .map(element => {
-            if (element.type === 'line') {
-              return `${element.id},${element.equation},${element.color}`;
-            } else {
-              return `${element.id},${element.min},${element.max},${element.step}`;
-            }
-          })
-          .join('|');
+      if (isDrawingRequest || isMermaidRequest) {
+        // Let the user know we're generating a diagram
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: "Generating a diagram based on your request...",
+            sender: 'bot',
+          },
+        ]);
         
-        setCurrentExpression(graphExpression);
-        setDesmosModalOpen(true);
+        // Generate the diagram
+        const diagramElements = await excalidrawService.generateDiagram(userMessage);
+        
+        // Update the state to hold the generated elements
+        setExcalidrawElements(diagramElements);
+        setDrawingPrompt(userMessage);
+        
+        // Show the drawing board
+        setShowDrawingBoard(true);
+        
+        // Add a message about the diagram
+        setMessages(prev => [
+          ...prev.slice(0, -1), // Remove the "Generating..." message
+          {
+            id: Date.now() + 1,
+            text: isMermaidRequest 
+              ? "I've created a Mermaid diagram based on your request. You can view and edit it in the drawing board."
+              : "I've created a diagram based on your request. You can view and edit it in the drawing board.",
+            sender: 'bot',
+          },
+        ]);
+      } else if (userMessage.toLowerCase().includes('list videos')) {
+        // Handle video listing
+        const response = await fetch(`${API_BASE_URL}/list_videos`);
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setVideoList(data.videos || []);
+        
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: "Here are the available videos:",
+            sender: 'bot',
+            videoList: data.videos || [],
+          },
+        ]);
+      } else if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create video')) {
+        // Handle video generation
+        const response = await fetch(`${API_BASE_URL}/run?prompt=${encodeURIComponent(userMessage)}`);
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setVideoUrl(data.video_url);
+        
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: "Here's a visualization of your request:",
+            sender: 'bot',
+            video: data.video_url
+          },
+        ]);
+      } else {
+        // Handle regular chat message with Gemini
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timed out')), 30000);
+        });
+        
+        console.log("Sending message to Gemini API:", userMessage);
+        const responsePromise = geminiService.sendMessage(userMessage);
+        
+        const response = await Promise.race([responsePromise, timeoutPromise]) as string;
+        console.log("Received response from Gemini API:", response);
+        
+        // Process frontmatter if present
+        const { frontmatter, content } = extractFrontmatter(response);
+        
+        // Check if the processed content contains any mathematical expressions
+        const responseHasGraph = shouldShowGraph(content);
+        const responseMathExpression = responseHasGraph ? detectMathExpression(content) : { hasEquation: false, latex: '', type: 'unknown' };
+        
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: content || "I received your message but couldn't generate a response. Please try again.",
+            sender: 'bot',
+            graphExpression: responseMathExpression.hasEquation ? responseMathExpression.latex : undefined,
+            frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : undefined
+          },
+        ]);
+
+        // Process any tool commands from frontmatter
+        if (frontmatter.graph) {
+          // Combine all graph elements into a single expression string
+          const graphExpression = frontmatter.graph.elements
+            .map(element => {
+              if (element.type === 'line') {
+                return `${element.id},${element.equation},${element.color}`;
+              } else {
+                return `${element.id},${element.min},${element.max},${element.step}`;
+              }
+            })
+            .join('|');
+          
+          setCurrentExpression(graphExpression);
+          setDesmosModalOpen(true);
+        }
       }
     } catch (error) {
       console.error('Error getting response:', error);
       let errorMessage = 'Sorry, I encountered an error processing your request.';
       
-      // Enhanced error handling with debugging info
       if (error instanceof Error) {
-        // Set debug info for troubleshooting
         setDebugInfo(`Error: ${error.message}\n${error.stack || ''}`);
         
-        // Add more specific error message based on the type of error
         if (error.message.includes('timed out')) {
           errorMessage = 'The request took too long to process. Please try again with a shorter message.';
         } else if (error.message.includes('API key')) {
@@ -194,12 +299,12 @@ const ChatInterface: React.FC = () => {
         }
       }
       
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
         {
-          id: prev.length,
+          id: Date.now() + 1,
           text: errorMessage,
-          isUser: false,
+          sender: 'bot',
         },
       ]);
     } finally {
@@ -208,22 +313,25 @@ const ChatInterface: React.FC = () => {
   };
 
   const handleNewConversation = () => {
-    // Reset the conversation in the Gemini service
     const success = geminiService.resetConversation();
     
-    // Clear all messages and add the greeting
     setMessages([
       {
         id: 0,
         text: success 
           ? "Welcome to Alpha Assistant. I'm here to help with your questions and tasks. I can also assist with mathematical concepts - just mention equation terms like calculus, trigonometry, or algebra."
           : "Welcome to Alpha Assistant. Note: There was an issue resetting the conversation history.",
-        isUser: false,
+        sender: 'bot',
       },
     ]);
     
-    // Clear debug info
     setDebugInfo(null);
+    setVideoUrl(null);
+    setVideoList([]);
+  };
+
+  const handleToggleDrawingBoard = () => {
+    setShowDrawingBoard(!showDrawingBoard);
   };
 
   const openDesmosWithExpression = (expression: string) => {
@@ -238,6 +346,19 @@ const ChatInterface: React.FC = () => {
           <h2 className="text-xl font-semibold">Chat</h2>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              setInput('list videos');
+              // Create a synthetic event with the required properties
+              handleSubmit({
+                preventDefault: () => {},
+                type: 'submit'
+              } as React.FormEvent);
+            }}
+            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 text-white"
+          >
+            <i className="fas fa-video mr-2"></i>List Videos
+          </button>
           {debugInfo && (
             <button
               onClick={() => setDebugInfo(null)}
@@ -253,25 +374,35 @@ const ChatInterface: React.FC = () => {
           >
             New Conversation
           </button>
+          <button
+            onClick={handleToggleDrawingBoard}
+            className={`px-4 py-2 rounded-lg hover:bg-gray-600 text-white ${
+              showDrawingBoard ? 'bg-blue-600' : 'bg-gray-700'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
+          >
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'} mr-2`}></i>
+            {showDrawingBoard ? 'Close Drawing' : 'Open Drawing'}
+          </button>
         </div>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
+        {messages.map(message => (
           <div
             key={message.id}
             className={`flex ${
-              message.isUser ? 'justify-end' : 'justify-start'
+              message.sender === 'user' ? 'justify-end' : 'justify-start'
             }`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-lg ${
-                message.isUser
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.sender === 'user'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-[#2a2a2a] text-gray-100'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
               }`}
             >
-              {message.isUser ? (
+              {message.sender === 'user' ? (
                 <p className="whitespace-pre-wrap">{message.text}</p>
               ) : (
                 <MarkdownRenderer content={message.text} />
@@ -289,30 +420,70 @@ const ChatInterface: React.FC = () => {
                   </button>
                 </div>
               )}
+              
+              {message.video && (
+                <div className="mt-3">
+                  <MediaViewer
+                    type="video"
+                    src={message.video}
+                    interactive={true}
+                    width="100%"
+                  />
+                </div>
+              )}
+              
+              {message.videoList && message.videoList.length > 0 && (
+                <div className="mt-3">
+                  <MediaGallery
+                    items={message.videoList.map(video => ({
+                      id: video.key,
+                      type: 'video',
+                      src: video.url,
+                      title: video.key,
+                      size: video.size,
+                      lastModified: video.last_modified
+                    }))}
+                    layout="list"
+                  />
+                </div>
+              )}
+              
+              {message.videoList && message.videoList.length === 0 && (
+                <div className="mt-3 text-sm text-gray-300">
+                  No videos found in storage.
+                </div>
+              )}
             </div>
           </div>
         ))}
+        
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] p-3 rounded-lg bg-[#2a2a2a] text-gray-100">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+          <div className="flex justify-center">
+            <div className="bg-gray-700 text-white rounded-lg p-3">
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>
+                  {input.toLowerCase().includes('list videos') 
+                    ? 'Fetching videos...' 
+                    : input.toLowerCase().includes('generate') || input.toLowerCase().includes('create video')
+                      ? 'Generating animation...'
+                      : 'Thinking...'}
+                </span>
               </div>
             </div>
           </div>
         )}
+        
+        {debugInfo && (
+          <div className="mt-4 p-3 bg-gray-800 text-red-300 rounded-lg text-xs overflow-x-auto">
+            <pre>{debugInfo}</pre>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
-      
-      {/* Debug info panel, conditionally rendered */}
-      {debugInfo && (
-        <div className="p-2 bg-gray-800 border-t border-gray-700 max-h-40 overflow-y-auto">
-          <h3 className="text-sm font-bold text-yellow-400 mb-1">Debug Information:</h3>
-          <pre className="text-xs text-gray-300 whitespace-pre-wrap">{debugInfo}</pre>
-        </div>
-      )}
       
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
         <div className="flex items-center space-x-2">
@@ -321,17 +492,31 @@ const ChatInterface: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 bg-[#2a2a2a] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask a question or mention mathematical concepts for visualization..."
+            placeholder="Ask a question, generate visualizations, or mention math concepts..."
             disabled={isLoading}
           />
           <button
+            type="button"
+            onClick={handleToggleDrawingBoard}
+            className={`px-4 py-2 rounded-lg text-white ${
+              showDrawingBoard ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title={showDrawingBoard ? "Close Drawing Board" : "Open Drawing Board"}
+          >
+            <i className={`fas ${showDrawingBoard ? 'fa-times-circle' : 'fa-pencil-alt'}`}></i>
+          </button>
+          <button
             type="submit"
-            className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 rounded-lg text-white ${
+              isLoading || !input.trim()
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90'
+            }`}
             disabled={isLoading || !input.trim()}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            {isLoading 
+              ? <i className="fas fa-circle-notch fa-spin"></i> 
+              : <i className="fas fa-paper-plane"></i>}
           </button>
         </div>
       </form>
@@ -342,8 +527,26 @@ const ChatInterface: React.FC = () => {
         onClose={() => setDesmosModalOpen(false)}
         expression={currentExpression}
       />
+      
+      {/* Drawing board modal */}
+      {showDrawingBoard && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-auto flex items-center justify-center">
+              <DrawingBoard 
+                width="100%" 
+                height="600px" 
+                className="custom-styles"
+                initialData={excalidrawElements}
+                prompt={drawingPrompt}
+                onClose={handleToggleDrawingBoard}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ChatInterface; 
+export default ChatInterface;
