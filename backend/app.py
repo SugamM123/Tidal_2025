@@ -2,12 +2,17 @@ from flask import Flask, jsonify, request
 import os
 import re
 from manim import *
+<<<<<<< Updated upstream
 import traceback
+=======
+from openai import OpenAI
+>>>>>>> Stashed changes
 import dotenv
 from flask_cors import CORS
 import boto3
 import glob
 import shutil
+<<<<<<< Updated upstream
 from get_steps import generate_steps
 from get_code import generate_code
 from get_combined import generate_combined
@@ -16,6 +21,19 @@ from moviepy import *
 
 dotenv.load_dotenv()
 # openai.api_key = os.getenv("OPEN_AI_API")
+=======
+from system import gen_steps, gen_code
+from debug import debug_code
+import traceback
+import datetime
+
+dotenv.load_dotenv()
+model = 'anthropic/claude-3.7-sonnet'
+client = OpenAI(
+    base_url = "https://openrouter.ai/api/v1",
+    api_key = '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'
+)
+>>>>>>> Stashed changes
 
 # Initialize a session using your credentials
 session = boto3.Session(
@@ -29,6 +47,29 @@ s3 = session.client('s3')
 
 config.media_dir = "./out"
 
+<<<<<<< Updated upstream
+=======
+def generate_steps(prompt):
+    response = client.chat.completions.create(
+        model='google/gemini-2.0-flash-001',
+        messages=[
+            {"role": "system", "content": gen_steps},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return (response.choices[0].message.content)
+
+def generate_code(steps):
+    response = client.chat.completions.create(
+        model='anthropic/claude-3.7-sonnet',
+        messages=[
+            {"role": "system", "content": gen_code},
+            {"role": "user", "content": steps}
+        ]
+    )
+    return (response.choices[0].message.content)
+
+>>>>>>> Stashed changes
 app = Flask(__name__)
 CORS(app, origins=["https://tidal-2025.pages.dev"])
 
@@ -92,6 +133,14 @@ def run_code():
 
     # Specify the bucket name and the file to upload
     bucket_name = 'alpha-tidal-2025'
+<<<<<<< Updated upstream
+=======
+    video_files = glob.glob("./out/videos/**/*.mp4", recursive=True)
+    if not video_files:
+        return jsonify({"error": "No .mp4 file found in the specified directory."}), 500
+    file_path = video_files[0]
+    object_name = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S") + ".mp4"
+>>>>>>> Stashed changes
 
     object_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".mp4"
     # Upload the file

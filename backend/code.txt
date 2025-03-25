@@ -1,0 +1,200 @@
+```python
+from manim import *
+import numpy as np
+
+class MyScene(Scene):
+    def construct(self):
+        # Step 1: Setup the fluid region and particles
+        fluid_region = Rectangle(
+            width=18,
+            height=10,
+            fill_color=BLUE,
+            fill_opacity=0.2,
+            stroke_color=WHITE
+        )
+        
+        # Generate 50 random particles within the fluid region
+        particles = VGroup()
+        particle_positions = []
+        for _ in range(50):
+            x = np.random.uniform(-8, 8)
+            y = np.random.uniform(-4.5, 4.5)
+            particle = Dot(point=[x, y, 0], color=WHITE)
+            particles.add(particle)
+            particle_positions.append([x, y, 0])
+        
+        # Create the fluid region and particles
+        self.play(Create(fluid_region))
+        self.play(Create(particles))
+        self.wait(1)
+        
+        # Step 2: Add velocity vectors to particles
+        velocity_vectors = VGroup()
+        velocities = []
+        
+        for i, particle in enumerate(particles):
+            # Generate random velocity
+            vel = 0.5 * np.random.rand(2) - 0.25  # Values between -0.25 and 0.25
+            velocities.append(vel)
+            
+            # Create arrow to represent velocity
+            start_point = particle.get_center()
+            end_point = [start_point[0] + vel[0], start_point[1] + vel[1], 0]
+            
+            # Ensure vectors don't exceed boundaries
+            arrow = Arrow(
+                start=start_point,
+                end=end_point,
+                color=YELLOW,
+                stroke_width=2,
+                buff=0
+            )
+            velocity_vectors.add(arrow)
+        
+        self.play(Create(velocity_vectors))
+        self.wait(1)
+        
+        # Step 3: Update particles and velocity vectors (first step)
+        updated_particles = VGroup()
+        updated_velocity_vectors = VGroup()
+        new_positions = []
+        new_velocities = []
+        
+        for i, (particle, velocity) in enumerate(zip(particles, velocities)):
+            # Update position based on velocity
+            old_pos = particle.get_center()
+            new_pos = [old_pos[0] + velocity[0], old_pos[1] + velocity[1], 0]
+            
+            # Apply boundary conditions (reflection)
+            new_vel = velocity.copy()
+            if new_pos[0] < -8:
+                new_pos[0] = -8
+                new_vel[0] *= -1
+            elif new_pos[0] > 8:
+                new_pos[0] = 8
+                new_vel[0] *= -1
+            
+            if new_pos[1] < -4.5:
+                new_pos[1] = -4.5
+                new_vel[1] *= -1
+            elif new_pos[1] > 4.5:
+                new_pos[1] = 4.5
+                new_vel[1] *= -1
+            
+            # Create updated particle
+            new_particle = Dot(point=new_pos, color=WHITE)
+            updated_particles.add(new_particle)
+            new_positions.append(new_pos)
+            new_velocities.append(new_vel)
+            
+            # Create updated velocity vector
+            end_point = [new_pos[0] + new_vel[0], new_pos[1] + new_vel[1], 0]
+            arrow = Arrow(
+                start=new_pos,
+                end=end_point,
+                color=YELLOW,
+                stroke_width=2,
+                buff=0
+            )
+            updated_velocity_vectors.add(arrow)
+        
+        self.play(
+            Transform(particles, updated_particles),
+            Transform(velocity_vectors, updated_velocity_vectors)
+        )
+        self.wait(1)
+        
+        # Step 4: Update particles and velocity vectors (second step)
+        updated_particles = VGroup()
+        updated_velocity_vectors = VGroup()
+        
+        for i, (new_pos, new_vel) in enumerate(zip(new_positions, new_velocities)):
+            # Update position based on velocity
+            next_pos = [new_pos[0] + new_vel[0], new_pos[1] + new_vel[1], 0]
+            
+            # Apply boundary conditions (reflection)
+            next_vel = new_vel.copy()
+            if next_pos[0] < -8:
+                next_pos[0] = -8
+                next_vel[0] *= -1
+            elif next_pos[0] > 8:
+                next_pos[0] = 8
+                next_vel[0] *= -1
+            
+            if next_pos[1] < -4.5:
+                next_pos[1] = -4.5
+                next_vel[1] *= -1
+            elif next_pos[1] > 4.5:
+                next_pos[1] = 4.5
+                next_vel[1] *= -1
+            
+            # Create updated particle
+            next_particle = Dot(point=next_pos, color=WHITE)
+            updated_particles.add(next_particle)
+            
+            # Create updated velocity vector
+            end_point = [next_pos[0] + next_vel[0], next_pos[1] + next_vel[1], 0]
+            arrow = Arrow(
+                start=next_pos,
+                end=end_point,
+                color=YELLOW,
+                stroke_width=2,
+                buff=0
+            )
+            updated_velocity_vectors.add(arrow)
+            
+            # Update for next iteration
+            new_positions[i] = next_pos
+            new_velocities[i] = next_vel
+        
+        self.play(
+            Transform(particles, updated_particles),
+            Transform(velocity_vectors, updated_velocity_vectors)
+        )
+        self.wait(1)
+        
+        # Step 5: Update particles and velocity vectors (third step)
+        updated_particles = VGroup()
+        updated_velocity_vectors = VGroup()
+        
+        for i, (new_pos, new_vel) in enumerate(zip(new_positions, new_velocities)):
+            # Update position based on velocity
+            next_pos = [new_pos[0] + new_vel[0], new_pos[1] + new_vel[1], 0]
+            
+            # Apply boundary conditions (reflection)
+            next_vel = new_vel.copy()
+            if next_pos[0] < -8:
+                next_pos[0] = -8
+                next_vel[0] *= -1
+            elif next_pos[0] > 8:
+                next_pos[0] = 8
+                next_vel[0] *= -1
+            
+            if next_pos[1] < -4.5:
+                next_pos[1] = -4.5
+                next_vel[1] *= -1
+            elif next_pos[1] > 4.5:
+                next_pos[1] = 4.5
+                next_vel[1] *= -1
+            
+            # Create updated particle
+            next_particle = Dot(point=next_pos, color=WHITE)
+            updated_particles.add(next_particle)
+            
+            # Create updated velocity vector
+            end_point = [next_pos[0] + next_vel[0], next_pos[1] + next_vel[1], 0]
+            arrow = Arrow(
+                start=next_pos,
+                end=end_point,
+                color=YELLOW,
+                stroke_width=2,
+                buff=0
+            )
+            updated_velocity_vectors.add(arrow)
+        
+        self.play(
+            Transform(particles, updated_particles),
+            Transform(velocity_vectors, updated_velocity_vectors)
+        )
+        self.wait(1)
+```

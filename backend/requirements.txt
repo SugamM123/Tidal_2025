@@ -1,6 +1,6 @@
 manim
 flask
-openai==0.28
+openai
 dotenv
 boto3
 gunicorn

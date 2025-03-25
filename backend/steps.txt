@@ -1,0 +1,75 @@
+Okay, I will provide a step-by-step animation plan using Manim to visualize a 2D fluid simulation with velocity vectors.
+
+**Step 1**
+
+*   **Screen Resolution:** 1920x1080
+
+*   **Visual Elements:**
+    *   `FluidRegion`: A `Rectangle` spanning nearly the entire screen (e.g., with left edge at x=-9, right edge at x=9, bottom edge at y=-5, and top edge at y=5). `fill_color=BLUE`, `fill_opacity=0.2`, `stroke_color=WHITE`.
+    *   `Particles`: A list of 50 small `Dot` objects. Each dot has: `color=WHITE`
+        *   Positions: Randomly placed within `FluidRegion`.
+    *   `VelocityVectors`: An empty `VGroup` to hold velocity vectors. Will be populated in later steps.
+
+*   **Animation Instructions:**
+    *   `Create(FluidRegion)`
+    *   `Create(Particles)`
+    *   `Wait(1)`
+
+*   **Persistence:** `FluidRegion`, `Particles`
+
+*   **Explanation:** Establishes the simulation area and randomly-placed particles representing the initial fluid state. This creates the visual field for the simulation.
+
+**Step 2**
+
+*   **Screen Resolution:** 1920x1080
+
+*   **Visual Elements:**
+    *   (From Step 1) `FluidRegion`, `Particles`
+    *   `VelocityVectors`: A `VGroup`. For each particle `p` in `Particles`, create an `Arrow` starting at `p.get_center()` with a length proportional to the particle's (initially random) velocity (e.g., `0.5 * np.random.rand(2)`), with `color=YELLOW`. Scale Vectors so that they never exceed boundaries
+    *   Set_style for arrow to be `stroke_width=2`
+*   **Animation Instructions:**
+    *   `Create(VelocityVectors)`
+    *   `Wait(1)`
+
+*   **Persistence:** `FluidRegion`, `Particles`, `VelocityVectors`
+
+*   **Explanation:** Adds velocity vectors to each particle, visualizing their initial direction and magnitude. This step makes the concept of velocity tangible.
+
+**Step 3**
+
+*   **Screen Resolution:** 1920x1080
+
+*   **Visual Elements:**
+    *   (From step 2) `FluidRegion`, `Particles`, `VelocityVectors`
+    *   `UpdatedParticles`: A new list of `Dot` objects representing the particles' positions after one time step. Each particle's new position is determined by its velocity vector from `VelocityVectors`. Ensure updated positions remain within `FluidRegion`; apply boundary conditions (e.g., reflection) if necessary. Colors maintained. Each dot has: `color=WHITE`
+    *   `UpdatedVelocityVectors`: new `VGroup` based on updated particles and velocities. Similar math, but updated velocity is different from step 2
+
+*   **Animation Instructions:**
+    *   `Transform(Particles, UpdatedParticles)`
+    *   `Transform(VelocityVectors, UpdatedVelocityVectors)`
+    *   `Wait(1)`
+
+*   **Persistence:** `FluidRegion`, `UpdatedParticles` (renamed to `Particles` for the next iteration), `UpdatedVelocityVectors` (renamed to `VelocityVectors` for next step)
+
+*   **Explanation:** Advances the simulation by updating particle positions based on their velocities. The old particles are transformed into new particles. This demonstrates the core simulation loop: update position based on velocity.
+
+**Step 4**
+
+*   **Screen Resolution:** 1920x1080
+
+*   **Visual Elements:**
+    *   (From step 3) `FluidRegion`, `Particles`, `VelocityVectors`
+    *   `UpdatedParticles`: A new list of `Dot` objects representing the particles' positions after new time step. Update particle positions based on velocity, again respecting `FluidRegion` boundaries.
+    *   `UpdatedVelocityVectors`: updated verlocities based on positions.
+
+*   **Animation Instructions:**
+    *   `Transform(Particles, UpdatedParticles)`
+    *   `Transform(VelocityVectors, UpdatedVelocityVectors)`
+    *   `Wait(1)`
+
+*   **Persistence:** all updated to step 5
+
+*   **Explanation:** Advances simulation like step 3
+
+*Step 5*
+repeat of step 4

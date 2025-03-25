@@ -1,0 +1,662 @@
+from manim import *
+import random
+import numpy as np
+
+class MyScene(Scene):
+    def construct(self):
+        # Step 1: Creating the population with clusters
+        # Create large rectangle
+        population_box = Rectangle(
+            width=config.frame_width * 0.8,
+            height=config.frame_height * 0.6,
+        ).set_stroke(WHITE, 2)
+        
+        # Create grid lines for 5x5 clusters
+        rows, cols = 5, 5
+        cluster_width = population_box.width / cols
+        cluster_height = population_box.height / rows
+        
+        cluster_grid = VGroup()
+        for i in range(1, rows):
+            h_line = Line(
+                start=population_box.get_corner(UL) + RIGHT * 0 + DOWN * i * cluster_height,
+                end=population_box.get_corner(UR) + LEFT * 0 + DOWN * i * cluster_height,
+            )
+            cluster_grid.add(h_line)
+        
+        for i in range(1, cols):
+            v_line = Line(
+                start=population_box.get_corner(UL) + RIGHT * i * cluster_width + DOWN * 0,
+                end=population_box.get_corner(DL) + RIGHT * i * cluster_width + UP * 0,
+            )
+            cluster_grid.add(v_line)
+        
+        # Create dots within each cluster
+        dots_per_cluster = 12
+        all_dots = VGroup()
+        clusters = []
+        
+        for row in range(rows):
+            row_clusters = []
+            for col in range(cols):
+                # Define the cluster area
+                top_left = population_box.get_corner(UL) + RIGHT * col * cluster_width + DOWN * row * cluster_height
+                
+                # Create dots for this cluster
+                cluster_dots = VGroup()
+                for _ in range(dots_per_cluster):
+                    # Random position within the cluster
+                    x_offset = random.uniform(0.1, 0.9) * cluster_width
+                    y_offset = random.uniform(0.1, 0.9) * cluster_height
+                    position = top_left + RIGHT * x_offset + DOWN * y_offset
+                    
+                    dot = Dot(position, radius=0.05, color=WHITE)
+                    cluster_dots.add(dot)
+                    all_dots.add(dot)
+                
+                row_clusters.append(cluster_dots)
+            clusters.append(row_clusters)
+        
+        title = Text("Clustered Sampling", font_size=48).to_edge(UP)
+        
+        # Play the first step animations
+        self.play(Create(population_box), run_time=1)
+        self.play(Create(cluster_grid), run_time=1.5)
+        self.play(FadeIn(all_dots, lag_ratio=0.05), run_time=2)
+        self.play(Write(title), run_time=1)
+        
+        # Step 2: Highlighting random clusters
+        step1_label = Text("Step 1: Randomly select clusters", font_size=28).to_edge(DL)
+        
+        # Choose 3 random clusters
+        selected_clusters = []
+        highlight_colors = [YELLOW, BLUE, GREEN]
+        highlight_rectangles = VGroup()
+        
+        # Randomly select 3 distinct clusters
+        selected_indices = []
+        while len(selected_indices) < 3:
+            row = random.randint(0, rows - 1)
+            col = random.randint(0, cols - 1)
+            if (row, col) not in selected_indices:
+                selected_indices.append((row, col))
+        
+        for i, (row, col) in enumerate(selected_indices):
+            # Calculate the position of the cluster
+            top_left = population_box.get_corner(UL) + RIGHT * col * cluster_width + DOWN * row * cluster_height
+            
+            # Create a rectangle to highlight the cluster
+            highlight_rect = Rectangle(
+                width=cluster_width,
+                height=cluster_height,
+                color=highlight_colors[i],
+                fill_opacity=0.3
+            )
+            highlight_rect.move_to(top_left + RIGHT * cluster_width/2 + DOWN * cluster_height/2)
+            highlight_rectangles.add(highlight_rect)
+            
+            selected_clusters.append(clusters[row][col])
+        
+        self.play(Create(step1_label), run_time=1)
+        
+        # Highlight the clusters one by one
+        for rect in highlight_rectangles:
+            self.play(FadeIn(rect), run_time=0.8)
+        
+        # Step 3: Emphasize individuals within selected clusters
+        step2_label = Text("Step 2: Sample ALL individuals within selected clusters", font_size=28).to_edge(DL)
+        
+        # Count total dots in selected clusters
+        total_dots = sum(len(cluster) for cluster in selected_clusters)
+        count_indicator = Text(f"Sample size: {total_dots}", font_size=28).to_edge(DR)
+        
+        self.play(FadeOut(step1_label), run_time=0.5)
+        self.play(Create(step2_label), run_time=1)
+        
+        # Emphasize dots in each selected cluster
+        for i, cluster in enumerate(selected_clusters):
+            emphasized_dots = []
+            for dot in cluster:
+                emphasized_dot = dot.copy().scale(1.3).set_color(highlight_colors[i])
+                emphasized_dots.append(emphasized_dot)
+            
+            self.play(
+                *[Transform(dot, emphasized_dot) for dot, emphasized_dot in zip(cluster, emphasized_dots)],
+                run_time=1.5
+            )
+        
+        self.play(Create(count_indicator), run_time=0.8)
+        
+        # Step 4: Real-world example - City Survey
+        city_title = Text("Real-World Example: City Survey", font_size=48).to_edge(UP)
+        subtitle = Text("Each block = one cluster", font_size=28).next_to(city_title, DOWN)
+        
+        # Fade out previous elements
+        self.play(
+            FadeOut(VGroup(population_box, cluster_grid, all_dots, title, 
+                          step2_label, count_indicator, highlight_rectangles)),
+            run_time=1
+        )
+        
+        # Create city map (8x8 grid)
+        city_rows, city_cols = 8, 8
+        block_width = config.frame_width * 0.7 / city_cols
+        block_height = config.frame_height * 0.6 / city_rows
+        
+        city_map = VGroup()
+        
+        # Create the background grid for the city
+        for i in range(city_rows + 1):
+            h_line = Line(
+                start=LEFT * (city_cols * block_width) / 2 + RIGHT * 0 + DOWN * (city_rows * block_height) / 2 + UP * i * block_height,
+                end=LEFT * (city_cols * block_width) / 2 + RIGHT * city_cols * block_width + DOWN * (city_rows * block_height) / 2 + UP * i * block_height,
+                color=GRAY
+            )
+            city_map.add(h_line)
+        
+        for i in range(city_cols + 1):
+            v_line = Line(
+                start=LEFT * (city_cols * block_width) / 2 + RIGHT * i * block_width + DOWN * (city_rows * block_height) / 2 + UP * 0,
+                end=LEFT * (city_cols * block_width) / 2 + RIGHT * i * block_width + DOWN * (city_rows * block_height) / 2 + UP * city_rows * block_height,
+                color=GRAY
+            )
+            city_map.add(v_line)
+        
+        # Create buildings for each block
+        buildings = VGroup()
+        city_clusters = []
+        
+        for row in range(city_rows):
+            row_clusters = []
+            for col in range(city_cols):
+                # Calculate the position for this block
+                block_center = (
+                    LEFT * (city_cols * block_width) / 2 + RIGHT * (col + 0.5) * block_width + 
+                    DOWN * (city_rows * block_height) / 2 + UP * (row + 0.5) * block_height
+                )
+                
+                # Create a simple house icon
+                block_buildings = VGroup()
+                
+                # Add 4 houses to each block
+                for i in range(2):
+                    for j in range(2):
+                        # House position within the block
+                        house_pos = block_center + RIGHT * (i - 0.5) * block_width * 0.4 + UP * (j - 0.5) * block_height * 0.4
+                        
+                        # Simple house shape (rectangle with triangle on top)
+                        house_base = Rectangle(
+                            width=block_width * 0.25, 
+                            height=block_height * 0.25,
+                            fill_color=BLUE_E,
+                            fill_opacity=0.7,
+                            stroke_width=1
+                        ).move_to(house_pos)
+                        
+                        house_roof = Triangle(
+                            fill_color=RED_E,
+                            fill_opacity=0.7,
+                            stroke_width=1
+                        ).scale(0.15).next_to(house_base, UP, buff=0).shift(DOWN * 0.08)
+                        
+                        house = VGroup(house_base, house_roof)
+                        block_buildings.add(house)
+                
+                buildings.add(block_buildings)
+                row_clusters.append(block_buildings)
+            city_clusters.append(row_clusters)
+        
+        self.play(FadeIn(city_map), run_time=1.5)
+        self.play(Create(buildings, lag_ratio=0.1), run_time=2)
+        self.play(Write(city_title), run_time=1)
+        self.play(Write(subtitle), run_time=1)
+        
+        # Step 5: Highlight selected blocks and show advantages
+        # Select 4 random blocks
+        selected_blocks = []
+        block_highlight_colors = [YELLOW_A, BLUE_A, GREEN_A, RED_A]
+        highlight_block_rectangles = VGroup()
+        
+        # Randomly select 4 distinct blocks
+        selected_block_indices = []
+        while len(selected_block_indices) < 4:
+            row = random.randint(0, city_rows - 1)
+            col = random.randint(0, city_cols - 1)
+            if (row, col) not in selected_block_indices:
+                selected_block_indices.append((row, col))
+        
+        for i, (row, col) in enumerate(selected_block_indices):
+            # Calculate the position of the block
+            block_center = (
+                LEFT * (city_cols * block_width) / 2 + RIGHT * (col + 0.5) * block_width + 
+                DOWN * (city_rows * block_height) / 2 + UP * (row + 0.5) * block_height
+            )
+            
+            # Create a rectangle to highlight the block
+            highlight_rect = Rectangle(
+                width=block_width,
+                height=block_height,
+                color=block_highlight_colors[i],
+                fill_opacity=0.3
+            ).move_to(block_center)
+            highlight_block_rectangles.add(highlight_rect)
+            
+            selected_blocks.append(city_clusters[row][col])
+        
+        # Sequentially highlight blocks
+        for rect in highlight_block_rectangles:
+            self.play(FadeIn(rect), run_time=0.5)
+        
+        # Create magnified view of one block
+        magnified_block = selected_blocks[0].copy().scale(1.5)
+        magnified_background = Rectangle(
+            width=magnified_block.width + 0.5,
+            height=magnified_block.height + 0.5,
+            stroke_color=WHITE,
+            stroke_width=2,
+            fill_color=GRAY_D,
+            fill_opacity=0.5
+        )
+        magnified_view = VGroup(magnified_background, magnified_block)
+        magnified_view.to_edge(UR, buff=0.5)
+        
+        magnification_arrow = Arrow(
+            highlight_block_rectangles[0].get_center(), 
+            magnified_background.get_left() + LEFT * 0.2,
+            buff=0.1,
+            color=WHITE
+        )
+        
+        self.play(
+            Create(magnified_background),
+            TransformFromCopy(selected_blocks[0], magnified_block),
+            GrowArrow(magnification_arrow),
+            run_time=2
+        )
+        
+        # Create text boxes for advantages and caution
+        advantages_text = """Advantages:
+        ✓ Cost-effective
+        ✓ Practical implementation
+        ✓ Good for geographically dispersed populations"""
+        
+        caution_text = """Caution:
+        Requires clusters to be internally diverse"""
+        
+        advantages_box = VGroup(
+            Rectangle(
+                width=4.5,
+                height=2.5,
+                fill_color=GREEN_E,
+                fill_opacity=0.3,
+                stroke_color=GREEN,
+                stroke_width=2,
+                corner_radius=0.2
+            ),
+            Text(advantages_text, font_size=24)
+        )
+        advantages_box[1].move_to(advantages_box[0].get_center())
+        advantages_box.to_corner(DL, buff=0.5)
+        
+        caution_box = VGroup(
+            Rectangle(
+                width=4,
+                height=1.5,
+                fill_color=RED_E,
+                fill_opacity=0.3,
+                stroke_color=RED,
+                stroke_width=2,
+                corner_radius=0.2
+            ),
+            Text(caution_text, font_size=24)
+        )
+        caution_box[1].move_to(caution_box[0].get_center())
+        caution_box.to_corner(DR, buff=0.5)
+        
+        self.play(FadeIn(advantages_box), run_time=1)
+        self.play(FadeIn(caution_box), run_time=1)
+        
+        # Hold final frame
+        self.wait(2)
+
+---
+Traceback (most recent call last):
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/app.py", line 96, in run_code
+    global_namespace["MyScene"]().render()
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/.venv/lib/python3.11/site-packages/manim/scene/scene.py", line 237, in render
+    self.construct()
+  File "<string>", line 287, in construct
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/.venv/lib/python3.11/site-packages/manim/mobject/geometry/polygram.py", line 631, in __init__
+    super().__init__(UR, UL, DL, DR, color=color, **kwargs)
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/.venv/lib/python3.11/site-packages/manim/mobject/geometry/polygram.py", line 329, in __init__
+    super().__init__(vertices, **kwargs)
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/.venv/lib/python3.11/site-packages/manim/mobject/geometry/polygram.py", line 91, in __init__
+    super().__init__(color=color, **kwargs)
+  File "/Users/elichen/Documents/GitHub/Tidal_2025/backend/.venv/lib/python3.11/site-packages/manim/mobject/types/vectorized_mobject.py", line 161, in __init__
+    super().__init__(**kwargs)
+TypeError: Mobject.__init__() got an unexpected keyword argument 'corner_radius'
+
+---
+```python
+from manim import *
+import random
+import numpy as np
+
+class MyScene(Scene):
+    def construct(self):
+        # Step 1: Creating the population with clusters
+        # Create large rectangle
+        population_box = Rectangle(
+            width=config.frame_width * 0.8,
+            height=config.frame_height * 0.6,
+        ).set_stroke(WHITE, 2)
+        
+        # Create grid lines for 5x5 clusters
+        rows, cols = 5, 5
+        cluster_width = population_box.width / cols
+        cluster_height = population_box.height / rows
+        
+        cluster_grid = VGroup()
+        for i in range(1, rows):
+            h_line = Line(
+                start=population_box.get_corner(UL) + RIGHT * 0 + DOWN * i * cluster_height,
+                end=population_box.get_corner(UR) + LEFT * 0 + DOWN * i * cluster_height,
+            )
+            cluster_grid.add(h_line)
+        
+        for i in range(1, cols):
+            v_line = Line(
+                start=population_box.get_corner(UL) + RIGHT * i * cluster_width + DOWN * 0,
+                end=population_box.get_corner(DL) + RIGHT * i * cluster_width + UP * 0,
+            )
+            cluster_grid.add(v_line)
+        
+        # Create dots within each cluster
+        dots_per_cluster = 12
+        all_dots = VGroup()
+        clusters = []
+        
+        for row in range(rows):
+            row_clusters = []
+            for col in range(cols):
+                # Define the cluster area
+                top_left = population_box.get_corner(UL) + RIGHT * col * cluster_width + DOWN * row * cluster_height
+                
+                # Create dots for this cluster
+                cluster_dots = VGroup()
+                for _ in range(dots_per_cluster):
+                    # Random position within the cluster
+                    x_offset = random.uniform(0.1, 0.9) * cluster_width
+                    y_offset = random.uniform(0.1, 0.9) * cluster_height
+                    position = top_left + RIGHT * x_offset + DOWN * y_offset
+                    
+                    dot = Dot(position, radius=0.05, color=WHITE)
+                    cluster_dots.add(dot)
+                    all_dots.add(dot)
+                
+                row_clusters.append(cluster_dots)
+            clusters.append(row_clusters)
+        
+        title = Text("Clustered Sampling", font_size=48).to_edge(UP)
+        
+        # Play the first step animations
+        self.play(Create(population_box), run_time=1)
+        self.play(Create(cluster_grid), run_time=1.5)
+        self.play(FadeIn(all_dots, lag_ratio=0.05), run_time=2)
+        self.play(Write(title), run_time=1)
+        
+        # Step 2: Highlighting random clusters
+        step1_label = Text("Step 1: Randomly select clusters", font_size=28).to_edge(DL)
+        
+        # Choose 3 random clusters
+        selected_clusters = []
+        highlight_colors = [YELLOW, BLUE, GREEN]
+        highlight_rectangles = VGroup()
+        
+        # Randomly select 3 distinct clusters
+        selected_indices = []
+        while len(selected_indices) < 3:
+            row = random.randint(0, rows - 1)
+            col = random.randint(0, cols - 1)
+            if (row, col) not in selected_indices:
+                selected_indices.append((row, col))
+        
+        for i, (row, col) in enumerate(selected_indices):
+            # Calculate the position of the cluster
+            top_left = population_box.get_corner(UL) + RIGHT * col * cluster_width + DOWN * row * cluster_height
+            
+            # Create a rectangle to highlight the cluster
+            highlight_rect = Rectangle(
+                width=cluster_width,
+                height=cluster_height,
+                color=highlight_colors[i],
+                fill_opacity=0.3
+            )
+            highlight_rect.move_to(top_left + RIGHT * cluster_width/2 + DOWN * cluster_height/2)
+            highlight_rectangles.add(highlight_rect)
+            
+            selected_clusters.append(clusters[row][col])
+        
+        self.play(Create(step1_label), run_time=1)
+        
+        # Highlight the clusters one by one
+        for rect in highlight_rectangles:
+            self.play(FadeIn(rect), run_time=0.8)
+        
+        # Step 3: Emphasize individuals within selected clusters
+        step2_label = Text("Step 2: Sample ALL individuals within selected clusters", font_size=28).to_edge(DL)
+        
+        # Count total dots in selected clusters
+        total_dots = sum(len(cluster) for cluster in selected_clusters)
+        count_indicator = Text(f"Sample size: {total_dots}", font_size=28).to_edge(DR)
+        
+        self.play(FadeOut(step1_label), run_time=0.5)
+        self.play(Create(step2_label), run_time=1)
+        
+        # Emphasize dots in each selected cluster
+        for i, cluster in enumerate(selected_clusters):
+            emphasized_dots = []
+            for dot in cluster:
+                emphasized_dot = dot.copy().scale(1.3).set_color(highlight_colors[i])
+                emphasized_dots.append(emphasized_dot)
+            
+            self.play(
+                *[Transform(dot, emphasized_dot) for dot, emphasized_dot in zip(cluster, emphasized_dots)],
+                run_time=1.5
+            )
+        
+        self.play(Create(count_indicator), run_time=0.8)
+        
+        # Step 4: Real-world example - City Survey
+        city_title = Text("Real-World Example: City Survey", font_size=48).to_edge(UP)
+        subtitle = Text("Each block = one cluster", font_size=28).next_to(city_title, DOWN)
+        
+        # Fade out previous elements
+        self.play(
+            FadeOut(VGroup(population_box, cluster_grid, all_dots, title, 
+                          step2_label, count_indicator, highlight_rectangles)),
+            run_time=1
+        )
+        
+        # Create city map (8x8 grid)
+        city_rows, city_cols = 8, 8
+        block_width = config.frame_width * 0.7 / city_cols
+        block_height = config.frame_height * 0.6 / city_rows
+        
+        city_map = VGroup()
+        
+        # Create the background grid for the city
+        for i in range(city_rows + 1):
+            h_line = Line(
+                start=LEFT * (city_cols * block_width) / 2 + RIGHT * 0 + DOWN * (city_rows * block_height) / 2 + UP * i * block_height,
+                end=LEFT * (city_cols * block_width) / 2 + RIGHT * city_cols * block_width + DOWN * (city_rows * block_height) / 2 + UP * i * block_height,
+                color=GRAY
+            )
+            city_map.add(h_line)
+        
+        for i in range(city_cols + 1):
+            v_line = Line(
+                start=LEFT * (city_cols * block_width) / 2 + RIGHT * i * block_width + DOWN * (city_rows * block_height) / 2 + UP * 0,
+                end=LEFT * (city_cols * block_width) / 2 + RIGHT * i * block_width + DOWN * (city_rows * block_height) / 2 + UP * city_rows * block_height,
+                color=GRAY
+            )
+            city_map.add(v_line)
+        
+        # Create buildings for each block
+        buildings = VGroup()
+        city_clusters = []
+        
+        for row in range(city_rows):
+            row_clusters = []
+            for col in range(city_cols):
+                # Calculate the position for this block
+                block_center = (
+                    LEFT * (city_cols * block_width) / 2 + RIGHT * (col + 0.5) * block_width + 
+                    DOWN * (city_rows * block_height) / 2 + UP * (row + 0.5) * block_height
+                )
+                
+                # Create a simple house icon
+                block_buildings = VGroup()
+                
+                # Add 4 houses to each block
+                for i in range(2):
+                    for j in range(2):
+                        # House position within the block
+                        house_pos = block_center + RIGHT * (i - 0.5) * block_width * 0.4 + UP * (j - 0.5) * block_height * 0.4
+                        
+                        # Simple house shape (rectangle with triangle on top)
+                        house_base = Rectangle(
+                            width=block_width * 0.25, 
+                            height=block_height * 0.25,
+                            fill_color=BLUE_E,
+                            fill_opacity=0.7,
+                            stroke_width=1
+                        ).move_to(house_pos)
+                        
+                        house_roof = Triangle(
+                            fill_color=RED_E,
+                            fill_opacity=0.7,
+                            stroke_width=1
+                        ).scale(0.15).next_to(house_base, UP, buff=0).shift(DOWN * 0.08)
+                        
+                        house = VGroup(house_base, house_roof)
+                        block_buildings.add(house)
+                
+                buildings.add(block_buildings)
+                row_clusters.append(block_buildings)
+            city_clusters.append(row_clusters)
+        
+        self.play(FadeIn(city_map), run_time=1.5)
+        self.play(Create(buildings, lag_ratio=0.1), run_time=2)
+        self.play(Write(city_title), run_time=1)
+        self.play(Write(subtitle), run_time=1)
+        
+        # Step 5: Highlight selected blocks and show advantages
+        # Select 4 random blocks
+        selected_blocks = []
+        block_highlight_colors = [YELLOW_A, BLUE_A, GREEN_A, RED_A]
+        highlight_block_rectangles = VGroup()
+        
+        # Randomly select 4 distinct blocks
+        selected_block_indices = []
+        while len(selected_block_indices) < 4:
+            row = random.randint(0, city_rows - 1)
+            col = random.randint(0, city_cols - 1)
+            if (row, col) not in selected_block_indices:
+                selected_block_indices.append((row, col))
+        
+        for i, (row, col) in enumerate(selected_block_indices):
+            # Calculate the position of the block
+            block_center = (
+                LEFT * (city_cols * block_width) / 2 + RIGHT * (col + 0.5) * block_width + 
+                DOWN * (city_rows * block_height) / 2 + UP * (row + 0.5) * block_height
+            )
+            
+            # Create a rectangle to highlight the block
+            highlight_rect = Rectangle(
+                width=block_width,
+                height=block_height,
+                color=block_highlight_colors[i],
+                fill_opacity=0.3
+            ).move_to(block_center)
+            highlight_block_rectangles.add(highlight_rect)
+            
+            selected_blocks.append(city_clusters[row][col])
+        
+        # Sequentially highlight blocks
+        for rect in highlight_block_rectangles:
+            self.play(FadeIn(rect), run_time=0.5)
+        
+        # Create magnified view of one block
+        magnified_block = selected_blocks[0].copy().scale(1.5)
+        magnified_background = Rectangle(
+            width=magnified_block.width + 0.5,
+            height=magnified_block.height + 0.5,
+            stroke_color=WHITE,
+            stroke_width=2,
+            fill_color=GRAY_D,
+            fill_opacity=0.5,
+            
+        )
+        magnified_view = VGroup(magnified_background, magnified_block)
+        magnified_view.to_edge(UR, buff=0.5)
+        
+        magnification_arrow = Arrow(
+            highlight_block_rectangles[0].get_center(), 
+            magnified_background.get_left() + LEFT * 0.2,
+            buff=0.1,
+            color=WHITE
+        )
+        
+        self.play(
+            Create(magnified_background),
+            TransformFromCopy(selected_blocks[0], magnified_block),
+            GrowArrow(magnification_arrow),
+            run_time=2
+        )
+        
+        # Create text boxes for advantages and caution
+        advantages_text = """Advantages:
+        ✓ Cost-effective
+        ✓ Practical implementation
+        ✓ Good for geographically dispersed populations"""
+        
+        caution_text = """Caution:
+        Requires clusters to be internally diverse"""
+        
+        advantages_box = VGroup(
+            Rectangle(
+                width=4.5,
+                height=2.5,
+                fill_color=GREEN_E,
+                fill_opacity=0.3,
+                stroke_color=GREEN,
+                stroke_width=2,
+                
+            ),
+            Text(advantages_text, font_size=24)
+        )
+        advantages_box[1].move_to(advantages_box[0].get_center())
+        advantages_box.to_corner(DL, buff=0.5)
+        
+        caution_box = VGroup(
+            Rectangle(
+                width=4,
+                height=1.5,
+                fill_color=RED_E,
+                fill_opacity=0.3,
+                stroke_color=RED,
+                stroke_width=2,
+                
+            ),
+            Text(caution_text, font_size=24)
+        )
+        caution_box[1].move_to(caution_box[0].get_center())
+        caution_box.to_corner(DR, buff=0.5)
+        
+        self.play(FadeIn(advantages_box), run_time=1)
+        self.play(FadeIn(caution_box), run_time=1)
+        
+        # Hold final frame
+        self.wait(2)
+```
